@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat, unlink } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -81,6 +81,36 @@ export async function collectProjects(): Promise<ProjectInfo[]> {
   return projects
 }
 
+export async function deleteProjectSession(
+  projectId: string,
+  sessionId: string,
+): Promise<'deleted' | 'not_found'> {
+  const projectsRoot = getProjectsRoot()
+  if (!projectsRoot) {
+    return 'not_found'
+  }
+
+  const projectDir = resolveProjectDir(projectsRoot, projectId)
+  if (!projectDir) {
+    return 'not_found'
+  }
+
+  const normalizedSessionId = sessionId.toLowerCase().endsWith('.jsonl')
+    ? sessionId
+    : `${sessionId}.jsonl`
+  const sessionPath = path.join(projectDir, normalizedSessionId)
+
+  try {
+    await unlink(sessionPath)
+    return 'deleted'
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return 'not_found'
+    }
+    throw error
+  }
+}
+
 export function getProjectsRoot(): string | null {
   const homeDir = os.homedir()
   if (!homeDir || homeDir.trim().length === 0) {
@@ -126,4 +156,25 @@ async function extractSessionMetadata(
   }
 
   return null
+}
+
+function resolveProjectDir(
+  projectsRoot: string,
+  projectId: string,
+): string | null {
+  const resolvedRoot = path.resolve(projectsRoot)
+  const resolvedProject = path.resolve(projectsRoot, projectId)
+  if (!resolvedProject.startsWith(resolvedRoot)) {
+    return null
+  }
+  return resolvedProject
+}
+
+function isNotFoundError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 'ENOENT',
+  )
 }

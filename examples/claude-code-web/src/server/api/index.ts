@@ -5,7 +5,7 @@ import type {
   SessionSDKOptions,
 } from '@claude-agent-kit/server'
 
-import { collectProjects } from './projects'
+import { collectProjects, deleteProjectSession } from './projects'
 import { collectSessionSummaries, readSessionDetails } from './project-sessions'
 import { formatErrorMessage } from './errors'
 import { collectCapabilitySummary } from './capabilities'
@@ -87,6 +87,26 @@ export function registerApiRoutes(
       res
         .status(500)
         .json({ error: 'Failed to read session details', details: formatErrorMessage(error) })
+    }
+  })
+
+  app.delete('/api/projects/:projectId/sessions/:sessionId', async (req, res) => {
+    const { projectId, sessionId } = req.params
+
+    try {
+      const result = await deleteProjectSession(projectId, sessionId)
+      if (result === 'not_found') {
+        res
+          .status(404)
+          .json({ error: `Session '${sessionId}' not found in project '${projectId}'` })
+        return
+      }
+
+      res.status(204).end()
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: 'Failed to delete session', details: formatErrorMessage(error) })
     }
   })
 
