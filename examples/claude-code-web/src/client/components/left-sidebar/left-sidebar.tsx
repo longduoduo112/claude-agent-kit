@@ -34,6 +34,7 @@ export function LeftSidebar({
   const [projectSessions, setProjectSessions] = useState<
     Record<string, SessionSummary[]>
   >({})
+  const [projectsReloadToken, setProjectsReloadToken] = useState(0)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   )
@@ -206,7 +207,21 @@ export function LeftSidebar({
       isMounted = false
       controller.abort()
     }
-  }, [])
+  }, [projectsReloadToken])
+
+  useEffect(() => {
+    if (!hasLoadedInitialData) {
+      return
+    }
+    if (!selectedSessionId) {
+      return
+    }
+    if (projects.length > 0) {
+      return
+    }
+
+    setProjectsReloadToken((token) => token + 1)
+  }, [hasLoadedInitialData, selectedSessionId, projects.length])
 
   useEffect(() => {
     if (!hasLoadedInitialData) {
@@ -451,21 +466,18 @@ export function LeftSidebar({
   )
 
   useEffect(() => {
-    if (!selectedProjectId) {
-      return
-    }
-    if (!selectedSessionId) {
+    if (!selectedProjectId || !selectedSessionId) {
       return
     }
 
     const sessions = projectSessions[selectedProjectId]
-    if (!sessions || sessions.length === 0) {
-      return
-    }
-
-    const exists = sessions.some((session) => session.id === selectedSessionId)
-    if (exists) {
-      return
+    if (sessions) {
+      const exists = sessions.some(
+        (session) => session.id === selectedSessionId,
+      )
+      if (exists) {
+        return
+      }
     }
 
     void refreshSessionsForProject(selectedProjectId)
