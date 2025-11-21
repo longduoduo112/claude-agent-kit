@@ -16,22 +16,22 @@ export function ChatHeader({
   skillUploadMessage,
 }: ChatHeaderProps) {
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b border-border bg-background transition-colors">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">
-            Claude Code Chat
+          <h1 className="text-lg font-semibold text-foreground font-sans">
+            Claude Agent Chat
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted-foreground font-serif">
             {sessionId ? `Session • ${sessionId}` : 'New session'}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 ${
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 transition-colors ${
               isConnected
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-slate-200 text-slate-600'
+                ? 'bg-chart-3/10 text-chart-3'
+                : 'bg-muted text-muted-foreground'
             }`}
           >
             <span className="inline-block h-2 w-2 rounded-full bg-current" />
@@ -39,19 +39,19 @@ export function ChatHeader({
           </span>
           <button
             type="button"
-            className="rounded-full border border-slate-300 px-3 py-1 text-sm font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-input px-3 py-1 text-sm font-medium text-muted-foreground transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             onClick={onUploadSkillClick}
             disabled={!onUploadSkillClick || isUploadingSkill}
           >
             {isUploadingSkill ? 'Uploading skill…' : 'Upload skill'}
           </button>
           {connectionMessage ? (
-            <span className="text-xs text-slate-400">{connectionMessage}</span>
+            <span className="text-xs text-muted-foreground">{connectionMessage}</span>
           ) : null}
         </div>
       </div>
       {skillUploadMessage ? (
-        <div className="mx-auto flex w-full max-w-6xl justify-end px-6 pb-3 text-xs text-slate-500">
+        <div className="mx-auto flex w-full max-w-6xl justify-end px-6 pb-3 text-xs text-muted-foreground">
           {skillUploadMessage}
         </div>
       ) : null}

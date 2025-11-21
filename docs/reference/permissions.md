@@ -28,8 +28,9 @@ Tool request
 
 - Deny rules always win—even in `bypassPermissions`.
 - Hooks run before rule evaluation and after execution (post hook can inspect results).
-- `acceptEdits` mode only auto-approves file edits & filesystem operations; other tools still run through the pipeline.
-- `bypassPermissions` mode skips the `canUseTool` callback for any tool that survived hooks/rules.
+- `acceptEdits` mode only auto-approves file edits & filesystem operations (mkdir/touch/rm/mv/cp); other tools still run through the pipeline.
+- `bypassPermissions` mode skips the `canUseTool` callback for any tool that survived hooks/rules—use with caution.
+- `plan` mode exists in the API surface but is **not implemented in SDK transports** (per upstream doc).
 
 ## Mappings to our repo
 
@@ -43,6 +44,7 @@ Tool request
 1. **Expose `canUseTool` in our server** – Currently `Session` doesn’t surface a way for clients to approve/deny tools interactively. We should explore how to forward SDK callbacks through WebSocket events so UI can prompt users (requires design around concurrency and timeout handling).
 2. **Permission mode UX** – The `claude-code-web` client stores a `permissionMode` in jotai state, but we should double-check the available modes vs. the SDK (e.g., `plan` not supported) and document which modes are functional.
 3. **Publish settings.json guidance** – Our README doesn’t explain how `.claude/settings.json` rules interact with the server; writing a short section or linking to this doc would help devs reason about declarative allow/deny policies.
+4. **Security wrapper** – If we expose the API over a network, pair these controls with auth/rate-limiting at the HTTP layer; permissions alone don’t guard the API surface.
 
 ## Suggested doc updates
 

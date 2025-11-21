@@ -18,6 +18,7 @@ export function CapabilitiesPanel({
   errorMessage,
   onRefresh,
 }: CapabilitiesPanelProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const tools = capabilities?.tools ?? []
   const slashCommands = capabilities?.slashCommands ?? []
   const skills = capabilities?.skills ?? []
@@ -31,84 +32,125 @@ export function CapabilitiesPanel({
     localSkills.length > 0
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white/80 p-3 text-xs text-slate-600 shadow-sm">
-      <header className="mb-2 flex items-start justify-between gap-3">
-        <div>
-          <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <Terminal className="h-4 w-4 text-slate-400" />
-            Claude Capabilities
-          </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            {capabilities
-              ? buildSummaryLine(capabilities) || 'Ready to inspect available tools.'
-              : 'Inspect Claude once to discover available tools.'}
-          </p>
-        </div>
+    <section className="rounded-lg border border-border bg-card/50 text-xs text-muted-foreground shadow-sm">
+      <header className="flex items-center justify-between gap-3 p-3">
         <button
           type="button"
-          onClick={() => onRefresh?.()}
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex flex-1 items-center gap-2 text-left"
+        >
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-muted-foreground transition-transform duration-200',
+              isExpanded ? 'rotate-0' : '-rotate-90',
+            )}
+          />
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Terminal className="h-4 w-4 text-muted-foreground" />
+              Claude Capabilities
+            </p>
+            {!isExpanded && (
+              <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                {capabilities
+                  ? buildSummaryLine(capabilities) || 'Ready.'
+                  : 'Inspect available tools.'}
+              </p>
+            )}
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRefresh?.()
+          }}
           disabled={isLoading}
-          className="inline-flex items-center gap-1 rounded-full border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-400 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-1 rounded-full border border-input px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Refresh Claude capabilities"
         >
           <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
-          {isLoading ? 'Loading…' : 'Refresh'}
         </button>
       </header>
 
-      {errorMessage ? (
-        <p className="mb-2 rounded-md border border-red-100 bg-red-50 px-2 py-1 text-[11px] text-red-600">
-          {errorMessage}
-        </p>
-      ) : null}
+      {isExpanded && (
+        <div className="border-t border-border px-3 pb-3 pt-2">
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            {capabilities
+              ? buildSummaryLine(capabilities) ||
+              'Ready to inspect available tools.'
+              : 'Inspect Claude once to discover available tools.'}
+          </p>
 
-      {hasData ? (
-        <div className="space-y-2">
-          <CapabilitySection title={`Tools (${tools.length})`} defaultOpen>
-            {tools.map((tool) => (
-              <CapabilityBadge key={tool} label={tool} />
-            ))}
-          </CapabilitySection>
+          {errorMessage ? (
+            <p className="mb-2 rounded-md border border-destructive/20 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+              {errorMessage}
+            </p>
+          ) : null}
 
-          <CapabilitySection title={`MCP Servers (${mcpServers.length})`} defaultOpen>
-            {mcpServers.map((server) => (
-              <div
-                key={server.name}
-                className="flex items-center justify-between rounded-md bg-slate-50 px-2 py-1"
+          {hasData ? (
+            <div className="space-y-2">
+              <CapabilitySection title={`Tools (${tools.length})`}>
+                {tools.map((tool) => (
+                  <CapabilityBadge key={tool} label={tool} />
+                ))}
+              </CapabilitySection>
+
+              <CapabilitySection
+                title={`MCP Servers (${mcpServers.length})`}
+                defaultOpen
               >
-                <span className="font-medium text-slate-700">{server.name}</span>
-                <StatusBadge status={server.status} />
-              </div>
-            ))}
-          </CapabilitySection>
+                {mcpServers.map((server) => (
+                  <div
+                    key={server.name}
+                    className="flex items-center justify-between rounded-md bg-muted/50 px-2 py-1"
+                  >
+                    <span className="font-medium text-foreground">
+                      {server.name}
+                    </span>
+                    <StatusBadge status={server.status} />
+                  </div>
+                ))}
+              </CapabilitySection>
 
-          <CapabilitySection title={`Local Skills (${localSkills.length})`} defaultOpen>
-            {localSkills.map((skill) => (
-              <SkillCard key={skill.slug} skill={skill} />
-            ))}
-          </CapabilitySection>
+              <CapabilitySection
+                title={`Local Skills (${localSkills.length})`}
+                defaultOpen
+              >
+                {localSkills.map((skill) => (
+                  <SkillCard key={skill.slug} skill={skill} />
+                ))}
+              </CapabilitySection>
 
-          <CapabilitySection title={`Slash Commands (${slashCommands.length})`} defaultOpen>
-            {slashCommands.map((command) => (
-              <CapabilityBadge key={command} label={`/${command}`} />
-            ))}
-          </CapabilitySection>
+              <CapabilitySection
+                title={`Slash Commands (${slashCommands.length})`}
+              >
+                {slashCommands.map((command) => (
+                  <CapabilityBadge key={command} label={`/${command}`} />
+                ))}
+              </CapabilitySection>
 
-          <CapabilitySection title={`Skills (${skills.length})`}>
-            {skills.length > 0 ? (
-              skills.map((skill) => (
-                <CapabilityBadge key={skill} label={skill} variant="ghost" />
-              ))
-            ) : (
-              <p className="text-slate-400">Nothing available.</p>
-            )}
-          </CapabilitySection>
+              <CapabilitySection title={`Skills (${skills.length})`}>
+                {skills.length > 0 ? (
+                  skills.map((skill) => (
+                    <CapabilityBadge
+                      key={skill}
+                      label={skill}
+                      variant="ghost"
+                    />
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">Nothing available.</p>
+                )}
+              </CapabilitySection>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Run any prompt or press refresh to capture Claude&apos;s available
+              tools, MCP servers, and slash commands.
+            </p>
+          )}
         </div>
-      ) : (
-        <p className="text-[11px] text-slate-500">
-          Run any prompt or press refresh to capture Claude&apos;s available tools, MCP
-          servers, and slash commands.
-        </p>
       )}
     </section>
   )
@@ -243,12 +285,9 @@ function SkillCard({ skill }: SkillCardProps) {
   return (
     <div className="rounded-md border border-slate-200 bg-white/70 px-2 py-1">
       <p className="text-[12px] font-semibold text-slate-800">{skill.name}</p>
-      {skill.description ? (
+      {skill.description && (
         <p className="text-[11px] text-slate-500">{skill.description}</p>
-      ) : (
-        <p className="text-[11px] text-slate-400">No description</p>
       )}
-      <p className="text-[10px] text-slate-400">{skill.path}</p>
     </div>
   )
 }

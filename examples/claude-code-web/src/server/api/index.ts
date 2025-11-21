@@ -1,7 +1,8 @@
-import type { Express } from 'express'
+import type { Express, NextFunction, Request, Response } from 'express'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import rateLimit from 'express-rate-limit'
 
 import type {
   IClaudeAgentSDKClient,
@@ -19,6 +20,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+const API_AUTH_TOKEN = process.env.API_AUTH_TOKEN?.trim() || null
+
+const rateLimiter = rateLimit({
+  windowMs: Number(process.env.API_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000), // default 15m
+  max: Number(process.env.API_RATE_LIMIT_MAX || 300), // default 300 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!API_AUTH_TOKEN) {
+    next()
+    return
+  }
+
+  const authHeader = req.headers.authorization
+  const apiKeyHeader = req.headers['x-api-key']
+
+  const bearer = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice('Bearer '.length).trim()
+    : null
+
+  const provided = bearer || (typeof apiKeyHeader === 'string' ? apiKeyHeader.trim() : null)
+
+  if (provided && provided === API_AUTH_TOKEN) {
+    next()
+    return
+  }
+
+  res.status(401).json({ error: 'Unauthorized' })
+}
+
 type RegisterApiRoutesOptions = {
   sdkClient?: IClaudeAgentSDKClient
   defaultSessionOptions?: SessionSDKOptions
@@ -31,16 +64,21 @@ export function registerApiRoutes(
 ) {
   const { sdkClient, defaultSessionOptions, workspaceDir } = options
 
-  app.use('/api', (req, res, next) => {
-    res.set(corsHeaders)
+  app.use(
+    '/api',
+    (req, res, next) => {
+      res.set(corsHeaders)
 
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(204)
-      return
-    }
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(204)
+        return
+      }
 
-    next()
-  })
+      next()
+    },
+    rateLimiter,
+    requireAuth,
+  )
 
   app.get('/api/projects', async (_req, res) => {
     try {

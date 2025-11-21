@@ -1,0 +1,100 @@
+services:
+  user1:
+    build:
+      context: ../..
+      dockerfile: examples/claude-code-web/Dockerfile
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env
+    environment:
+      - PORT=5173
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./workspaces/user1
+        target: /app/agent
+    container_name: claude-web-user1
+
+  user2:
+    build:
+      context: ../..
+      dockerfile: examples/claude-code-web/Dockerfile
+    ports:
+      - "5174:5173"
+    env_file:
+      - .env
+    environment:
+      - PORT=5173
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./workspaces/user2
+        target: /app/agent
+    container_name: claude-web-user2
+
+  user3:
+    build:
+      context: ../..
+      dockerfile: examples/claude-code-web/Dockerfile
+    ports:
+      - "5175:5173"
+    env_file:
+      - .env
+    environment:
+      - PORT=5173
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./workspaces/user3
+        target: /app/agent
+    container_name: claude-web-user3
+
+  user4:
+    build:
+      context: ../..
+      dockerfile: examples/claude-code-web/Dockerfile
+    ports:
+      - "5176:5173"
+    env_file:
+      - .env
+    environment:
+      - PORT=5173
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./workspaces/user4
+        target: /app/agent
+    container_name: claude-web-user4
+
+  user5:
+    build:
+      context: ../..
+      dockerfile: examples/claude-code-web/Dockerfile
+    ports:
+      - "5177:5173"
+    env_file:
+      - .env
+    environment:
+      - PORT=5173
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./workspaces/user5
+        target: /app/agent
+    container_name: claude-web-user5

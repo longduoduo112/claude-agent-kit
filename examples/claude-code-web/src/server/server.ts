@@ -5,11 +5,13 @@ import express from 'express'
 import type { ViteDevServer } from 'vite'
 import { WebSocketServer } from 'ws'
 
-import { SimpleClaudeAgentSDKClient } from '@claude-agent-kit/server'
+import { Session, SimpleClaudeAgentSDKClient } from '@claude-agent-kit/server'
+import type { SessionSDKOptions } from '@claude-agent-kit/server'
 import { WebSocketHandler } from '@claude-agent-kit/websocket'
 import { registerApiRoutes } from './api'
 import { registerSkillUploadRoute } from './api/skills'
 import { registerRoutes } from './routes'
+import { loadMcpConfig } from './mcp-config'
 
 export interface CreateServerOptions {
   root?: string
@@ -21,6 +23,7 @@ export async function createServer(options: CreateServerOptions = {}) {
   const base = process.env.BASE ?? '/'
   const workspaceDir = process.env.WORKSPACE_DIR ?? path.resolve(root, 'agent')
   await fs.mkdir(workspaceDir, { recursive: true })
+  process.env.WORKSPACE_DIR = workspaceDir
 
   const app = express()
   const httpServer = createHttpServer(app)
@@ -30,10 +33,32 @@ export async function createServer(options: CreateServerOptions = {}) {
     baseURL: process.env.ANTHROPIC_BASE_URL || process.env.ANTHROPIC_API_URL,
     model: process.env.ANTHROPIC_MODEL,
   })
-  const webSocketHandler = new WebSocketHandler(sdkClient, {
+  const mcpConfig = await loadMcpConfig({
+    projectRoot: root,
+    env: {
+      WORKSPACE_DIR: workspaceDir,
+      PROJECT_ROOT: root,
+    },
+  })
+
+  const baseOptions = {
     thinkingLevel: 'default_on',
     cwd: workspaceDir,
-  })
+  } as SessionSDKOptions
+
+  if (Object.keys(mcpConfig.mcpServers).length > 0) {
+    baseOptions.mcpServers = mcpConfig.mcpServers
+  }
+
+  if (mcpConfig.allowedTools.length > 0) {
+    const templateSession = new Session(sdkClient)
+    const defaultAllowedTools = templateSession.options.allowedTools ?? []
+    baseOptions.allowedTools = Array.from(
+      new Set([...defaultAllowedTools, ...mcpConfig.allowedTools]),
+    )
+  }
+
+  const webSocketHandler = new WebSocketHandler(sdkClient, baseOptions)
 
   webSocketServer.on('connection', (ws) => {
     void webSocketHandler.onOpen(ws)
@@ -72,6 +97,9 @@ export async function createServer(options: CreateServerOptions = {}) {
     app.use(compression())
     app.use(base, sirv(path.resolve(root, 'dist/client'), { extensions: [] }))
   }
+
+  // Enable JSON body parsing for API routes
+  app.use(express.json())
 
   registerApiRoutes(app, {
     sdkClient,

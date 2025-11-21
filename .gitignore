@@ -137,3 +137,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Claude Agent Runtime Directories
+# These contain workspace-specific runtime files and caches
+examples/claude-code-web/agent/
+examples/claude-code-web/Agent*/

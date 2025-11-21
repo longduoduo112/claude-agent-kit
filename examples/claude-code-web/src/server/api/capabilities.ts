@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import type { Dirent } from 'node:fs'
 import path from 'node:path'
 
 import type { SDKMessage, SDKSystemMessage } from '@anthropic-ai/claude-agent-sdk'
@@ -123,7 +124,7 @@ async function collectLocalSkills(workspaceDir?: string): Promise<LocalSkillInfo
   }
 
   const skillRoot = path.join(workspaceDir, '.claude', 'skills')
-  let entries: Awaited<ReturnType<typeof fs.readdir>> = []
+  let entries: Dirent[] = []
   try {
     entries = await fs.readdir(skillRoot, { withFileTypes: true })
   } catch (error) {
@@ -146,10 +147,35 @@ async function collectLocalSkills(workspaceDir?: string): Promise<LocalSkillInfo
   return skills.filter((skill): skill is LocalSkillInfo => Boolean(skill))
 }
 
+import yaml from 'js-yaml'
+
 async function parseSkillMetadata(
   skillPath: string,
   fallbackName: string,
 ): Promise<LocalSkillInfo | null> {
+  // Try to read from skill.yaml or skill.yml first
+  const yamlNames = ['skill.yaml', 'skill.yml']
+  for (const yamlName of yamlNames) {
+    const yamlPath = path.join(skillPath, yamlName)
+    try {
+      const content = await fs.readFile(yamlPath, 'utf-8')
+      const parsed = yaml.load(content) as { name?: string; description?: string }
+      if (parsed && typeof parsed === 'object') {
+        return {
+          slug: fallbackName,
+          name: parsed.name || fallbackName,
+          description: parsed.description || null,
+          path: skillPath,
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.warn(`Failed to read or parse ${yamlName} for ${skillPath}:`, error)
+      }
+    }
+  }
+
+  // Fallback to SKILL.md
   const manifestPath = path.join(skillPath, 'SKILL.md')
   let content: string
   try {

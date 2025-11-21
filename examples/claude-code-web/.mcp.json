@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "workspace-filesystem": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-filesystem",
+        "${WORKSPACE_DIR}"
+      ]
+    },
+    "jina-mcp-server": {
+      "type": "sse",
+      "url": "https://mcp.jina.ai/sse",
+      "headers": {
+        "Authorization": "Bearer ${JINA_API_KEY}"
+      }
+    }
+  },
+  "allowedTools": [
+    "mcp__workspace-filesystem__read_file",
+    "mcp__workspace-filesystem__read_text_file",
+    "mcp__workspace-filesystem__read_media_file",
+    "mcp__workspace-filesystem__read_multiple_files",
+    "mcp__workspace-filesystem__write_file",
+    "mcp__workspace-filesystem__edit_file",
+    "mcp__workspace-filesystem__create_directory",
+    "mcp__workspace-filesystem__list_directory",
+    "mcp__workspace-filesystem__list_directory_with_sizes",
+    "mcp__workspace-filesystem__directory_tree",
+    "mcp__workspace-filesystem__move_file",
+    "mcp__workspace-filesystem__search_files",
+    "mcp__workspace-filesystem__get_file_info",
+    "mcp__workspace-filesystem__list_allowed_directories",
+    "mcp__jina-mcp-server__primer",
+    "mcp__jina-mcp-server__read_url",
+    "mcp__jina-mcp-server__capture_screenshot_url",
+    "mcp__jina-mcp-server__guess_datetime_url",
+    "mcp__jina-mcp-server__search_web",
+    "mcp__jina-mcp-server__search_arxiv",
+    "mcp__jina-mcp-server__search_images",
+    "mcp__jina-mcp-server__expand_query",
+    "mcp__jina-mcp-server__parallel_read_url",
+    "mcp__jina-mcp-server__parallel_search_web",
+    "mcp__jina-mcp-server__parallel_search_arxiv",
+    "mcp__jina-mcp-server__sort_by_relevance",
+    "mcp__jina-mcp-server__deduplicate_strings",
+    "mcp__jina-mcp-server__deduplicate_images"
+  ]
+}

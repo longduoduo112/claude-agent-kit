@@ -51,6 +51,8 @@ Environment variables:
 - `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_URL`, `ANTHROPIC_MODEL` (optional overrides for Claude-compatible endpoints)
 - `PORT` (default `5173`)
 - `WORKSPACE_DIR` (optional, defaults to `<project>/agent`; controls where skills/uploads are stored)
+- `API_AUTH_TOKEN` (optional, protects `/api` with an API key; send `Authorization: Bearer <token>` or `x-api-key: <token>`)
+- `API_RATE_LIMIT_WINDOW_MS`, `API_RATE_LIMIT_MAX` (optional, express-rate-limit config; defaults 15m/300)
 
 ### Docker Compose workflow
 Prefer using an env file? A ready-to-go `docker-compose.yml` is included.
@@ -135,3 +137,17 @@ The archive is extracted into `${WORKSPACE_DIR:-agent}/.claude/skills/<name>` in
 - Default SDK options: adjust when constructing `WebSocketHandler`.
 - Client resume: include `{ type: 'resume', sessionId }` after reconnect to reload history.
 - Message rendering: see `src/client/components` for mapping content blocks to UI.
+
+## MCP Servers
+Claude Code Web can load [Model Context Protocol](https://modelcontextprotocol.io/) servers by reading an `.mcp.json` file at the project root.
+
+- Configure servers under the `mcpServers` key. A stdio server entry needs a command plus any args, and SSE/HTTP entries just need their URLs.
+- String values support `${ENV}` or `${ENV:-fallback}` templating. `WORKSPACE_DIR` and `PROJECT_ROOT` are automatically supplied.
+- Set `allowedTools` to the fully qualified tool names (`mcp__<server>__<tool>`) that Claude is allowed to use. These are merged with the default tool list during startup.
+
+The default `.mcp.json` wires up two servers:
+
+1. `workspace-filesystem`: `npx @modelcontextprotocol/server-filesystem ${WORKSPACE_DIR}` gives Claude a sandboxed filesystem MCP server scoped to the agent workspace.
+2. `jina-mcp-server`: connects to [Jina AI's hosted MCP endpoint](https://mcp.jina.ai) for web search, screenshotting, dedupe, etc. To use it, set `JINA_API_KEY` in your `.env` (Compose passes it through automatically).
+
+Feel free to add more entries (SSE, HTTP, or stdio) following the SDK docs and redeploy.

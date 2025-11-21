@@ -6,7 +6,7 @@ Key points from the official guide and how they map to our implementation.
 
 ## Tracking session IDs
 
-- The SDK’s first system message for any `query()` call includes `subtype: "init"` and `session_id`.
+- The SDK’s first system message for any `query()` call includes `subtype: "init"` and `session_id` (official contract).
 - Capture that ID if you want to resume later. In our server, `Session.processIncomingMessage()` already calls `updateSessionId()` when it sees one, and `SessionManager` stores it per client.
 - When building clients, surface the session ID (e.g., `examples/claude-code-web` lets users switch sessions by ID).
 
@@ -15,6 +15,7 @@ Key points from the official guide and how they map to our implementation.
 - Pass `options.resume = "<sessionId>"` to continue an existing conversation. Our `Session.send()` does this automatically whenever `sessionId` is set, so multi-turn chats keep context without extra work.
 - `Session.resumeFrom()` loads prior messages via `sdkClient.loadMessages()` whenever a WebSocket client reconnects or explicitly calls `type: "resume"`.
 - Reminder: we rely on local `.claude/projects/<id>.jsonl` files to load transcripts. If they’re missing, resume will return an empty history (document that for devs).
+- The SDK also supports resuming multiple times; if you need branched history, combine `resume` with `forkSession` (see below).
 
 ## Forking sessions
 
