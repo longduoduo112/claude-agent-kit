@@ -87,6 +87,41 @@ export async function readSessionDetails(
   return { id: normalizedId, messages }
 }
 
+function isCapabilityProbe(records: SDKMessage[]): boolean {
+  if (records.length === 0) {
+    return false
+  }
+
+  const first = records[0] as {
+    type?: unknown
+    operation?: unknown
+    content?: unknown
+  }
+
+  if (first?.type !== 'queue-operation') {
+    return false
+  }
+
+  if (first?.operation !== 'enqueue') {
+    return false
+  }
+
+  const content = Array.isArray(first?.content) ? first.content : []
+  const firstEntry = content[0] as { text?: unknown } | undefined
+  return firstEntry?.text === 'claude-agent-sdk-capability-probe'
+}
+
+function isSidechainOnly(records: SDKMessage[]): boolean {
+  if (records.length === 0) {
+    return false
+  }
+  return records.every((record) => (record as { isSidechain?: unknown }).isSidechain === true)
+}
+
+function isIgnorableSession(records: SDKMessage[]): boolean {
+  return isCapabilityProbe(records) || isSidechainOnly(records)
+}
+
 async function buildSessionSummary(fileName: string, filePath: string): Promise<SessionSummary | null> {
   let fileContent: string
   try {
@@ -97,6 +132,10 @@ async function buildSessionSummary(fileName: string, filePath: string): Promise<
 
   const records = parseSessionMessagesFromJsonl(fileContent)
   if (records.length === 0) {
+    return null
+  }
+
+  if (isIgnorableSession(records)) {
     return null
   }
 

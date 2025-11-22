@@ -279,7 +279,10 @@ export class Session {
         const { messages } = await this.sdkClient.loadMessages(targetSessionId);
         console.log(`[Session] loadFromServer(${targetSessionId}) returned ${messages.length} messages`);
         if (messages.length === 0) {
-          this.setMessages([]);
+          console.log(`[Session] 🔥 SKIPPING setMessages for empty new session ${targetSessionId}`);
+          // Don't notify clients about empty message list for brand new sessions
+          // This prevents clearing the UI when a new session hasn't written to disk yet
+          this.messageList = [];
           this.summary = undefined;
           this.lastModifiedTime = Date.now();
           this.setBusyState(false);

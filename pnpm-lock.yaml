@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@anthropic-ai/claude-agent-sdk':
-        specifier: ^0.1.47
-        version: 0.1.47(zod@4.1.12)
+        specifier: ^0.1.50
+        version: 0.1.50(zod@4.1.12)
       '@types/node':
         specifier: ^24.8.1
         version: 24.9.1
@@ -496,6 +496,12 @@ packages:
 
   '@anthropic-ai/claude-agent-sdk@0.1.47':
     resolution: {integrity: sha512-0LAXuqp2AsvJcvrpVrJKANbmkqp3ZMpEfm03vRL6DrLc8JIQ5n25aCagIBDMwIVJscDwjd9cn4uAHvdI2PMLvw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      zod: ^3.24.1
+
+  '@anthropic-ai/claude-agent-sdk@0.1.50':
+    resolution: {integrity: sha512-vHOLohUeiVadWl4eTAbw12ACIG1wZ/NN4ScLe8P/yrsldT1QkYwn6ndkoilaFBB2gIHECEx7wRAtSfCLefge4Q==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       zod: ^3.24.1
@@ -5095,6 +5101,17 @@ snapshots:
       '@img/sharp-win32-x64': 0.33.5
 
   '@anthropic-ai/claude-agent-sdk@0.1.47(zod@4.1.12)':
+    dependencies:
+      zod: 4.1.12
+    optionalDependencies:
+      '@img/sharp-darwin-arm64': 0.33.5
+      '@img/sharp-darwin-x64': 0.33.5
+      '@img/sharp-linux-arm': 0.33.5
+      '@img/sharp-linux-arm64': 0.33.5
+      '@img/sharp-linux-x64': 0.33.5
+      '@img/sharp-win32-x64': 0.33.5
+
+  '@anthropic-ai/claude-agent-sdk@0.1.50(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
     optionalDependencies:

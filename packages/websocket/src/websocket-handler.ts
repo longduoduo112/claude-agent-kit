@@ -86,7 +86,7 @@ export class WebSocketHandler {
 
   }
 
-  
+
   private handleSetSDKOptions(ws: WebSocket, message: SetSDKOptionsIncomingMessage): void {
     const client = this.clients.get(ws);
     if (!client) {
@@ -129,6 +129,13 @@ export class WebSocketHandler {
         previousSession?.unsubscribe(client);
       }
       client.sessionId = undefined;
+
+      // Ensure the new session inherits the default options (e.g. CWD)
+      try {
+        this.sessionManager.setSDKOptions(client, this.options);
+      } catch (error) {
+        console.error("Failed to apply default SDK options to new session:", error);
+      }
     }
 
     this.sessionManager.sendMessage(client, content, message.attachments);
@@ -163,6 +170,19 @@ export class WebSocketHandler {
     client.sessionId = targetSessionId;
 
     const session = this.sessionManager.getOrCreateSession(client);
+
+    // Check if this session has any messages - if not, it's newly created
+    // and needs default options applied
+    const isNewSession = session.messages.length === 0;
+
+    if (isNewSession) {
+      try {
+        this.sessionManager.setSDKOptions(client, this.options);
+      } catch (error) {
+        console.error("Failed to apply default SDK options to resumed session:", error);
+      }
+    }
+
     session.subscribe(client);
     client.sessionId = targetSessionId;
     console.log(`[WebSocketHandler] Client subscribed to ${targetSessionId}, session has ${session.messages.length} messages loaded`);

@@ -35,17 +35,26 @@ export function useOutcomingMessageHandler() {
 
   return useCallback(
     (payload: OutcomingMessage) => {
+      console.log('[useOutcomingMessageHandler]', payload.type, {
+        sessionId: payload.sessionId,
+        messageCount: payload.type === 'messages_updated' ? payload.messages?.length : undefined,
+      })
+
       setSessionId(payload.sessionId ?? null)
 
       if (payload.type === 'message_added') {
-        setMessages((previous) =>
-          sortMessages(addNewSDKMessage(previous, payload.message)),
-        )
+        setMessages((previous) => {
+          const updated = sortMessages(addNewSDKMessage(previous, payload.message))
+          console.log('[useOutcomingMessageHandler] message_added, messages:', previous.length, '->', updated.length)
+          return updated
+        })
         return
       }
 
       if (payload.type === 'messages_updated') {
-        setMessages(sortMessages(convertSDKMessages(payload.messages)))
+        const updated = sortMessages(convertSDKMessages(payload.messages))
+        console.log('[useOutcomingMessageHandler] messages_updated, new count:', updated.length)
+        setMessages(updated)
         return
       }
 
@@ -70,15 +79,40 @@ export function useSelectChatSession() {
   const setProjectId = useSetAtom(chatProjectIdAtom)
   const setMessages = useSetAtom(chatMessagesAtom)
   const setSessionInfo = useSetAtom(chatSessionInfoAtom)
+  const currentSessionId = useAtomValue(chatSessionIdAtom)
 
   return useCallback(
     ({ sessionId, projectId }: ChatSessionSelectionPayload) => {
+      // Clear messages when session changes, EXCEPT when transitioning null -> sessionId
+      // (which happens when backend assigns an ID to current session)
+      const isSessionChange =
+        currentSessionId !== sessionId &&  // Session actually changed
+        currentSessionId !== null          // Not transitioning from null (backend ID assignment)
+
+      console.log('[useSelectChatSession]', {
+        from: currentSessionId,
+        to: sessionId,
+        projectId,
+        willClearMessages: isSessionChange,
+      })
+
       setSessionId(sessionId)
       setProjectId(projectId)
-      setMessages([])
-      setSessionInfo(createDefaultChatSessionInfo())
+
+      // Only clear when switching between two concrete sessionIds
+      if (isSessionChange) {
+        console.log('[useSelectChatSession] CLEARING MESSAGES')
+        setMessages([])
+        setSessionInfo(createDefaultChatSessionInfo())
+      }
     },
-    [setMessages, setProjectId, setSessionId, setSessionInfo],
+    [
+      currentSessionId,
+      setMessages,
+      setProjectId,
+      setSessionId,
+      setSessionInfo,
+    ],
   )
 }
 

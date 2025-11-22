@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useRoute } from '@/hooks/use-route'
 import { buildProjectPath, buildSessionPath, navigateTo } from '@/lib/route'
@@ -16,6 +16,14 @@ import { computeLatestActivity, isAbortError } from './utils'
 import { CapabilitiesPanel } from './capabilities-panel'
 
 const PROJECTS_ENDPOINT = '/api/projects'
+const SYSTEM_INFO_ENDPOINT = '/api/system-info'
+
+function normalizePath(value: string | null | undefined): string | null {
+  if (!value || typeof value !== 'string') {
+    return null
+  }
+  return value.replace(/[\\/]+$/, '').toLowerCase()
+}
 
 export function LeftSidebar({
   selectedSessionId,
@@ -35,6 +43,7 @@ export function LeftSidebar({
   const [projectSessions, setProjectSessions] = useState<
     Record<string, SessionSummary[]>
   >({})
+  const [workspaceDir, setWorkspaceDir] = useState<string | null>(null)
   const [projectsReloadToken, setProjectsReloadToken] = useState(0)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
@@ -45,6 +54,8 @@ export function LeftSidebar({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false)
   const [isNewSessionPending, setIsNewSessionPending] = useState(false)
+  const refreshAttemptsRef = useRef(0)
+  const lastMissingSessionIdRef = useRef<string | null>(null)
 
   const applySessionsUpdate = useCallback(
     (targetProjectId: string, sessions: SessionSummary[]) => {
@@ -162,6 +173,31 @@ export function LeftSidebar({
   }, [projectsReloadToken])
 
   useEffect(() => {
+    let isMounted = true
+
+    async function loadSystemInfo() {
+      try {
+        const response = await fetch(SYSTEM_INFO_ENDPOINT)
+        if (!response.ok) {
+          return
+        }
+        const body = (await response.json()) as { workspaceDir?: string | null }
+        if (isMounted) {
+          setWorkspaceDir(body?.workspaceDir ?? null)
+        }
+      } catch {
+        // ignore system info failures
+      }
+    }
+
+    void loadSystemInfo()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
     if (!hasLoadedInitialData) {
       return
     }
@@ -196,7 +232,15 @@ export function LeftSidebar({
       return
     }
 
-    const fallbackProjectId = projects[0]?.id ?? null
+    const normalizedWorkspace = normalizePath(workspaceDir)
+    const preferredProject =
+      normalizedWorkspace !== null
+        ? projects.find(
+          (project) => normalizePath(project.path) === normalizedWorkspace,
+        )
+        : null
+
+    const fallbackProjectId = preferredProject?.id ?? projects[0]?.id ?? null
     if (!fallbackProjectId) {
       return
     }
@@ -210,7 +254,7 @@ export function LeftSidebar({
         replace: !routeProjectId,
       })
     }
-  }, [hasLoadedInitialData, projects, routeProjectId, selectedProjectId])
+  }, [hasLoadedInitialData, projects, routeProjectId, selectedProjectId, workspaceDir])
 
   const currentProject = selectedProjectId
     ? projects.find((project) => project.id === selectedProjectId) ?? null
@@ -287,58 +331,19 @@ export function LeftSidebar({
     : []
 
   const derivedSessionId = useMemo(() => {
-    if (!currentSessions || currentSessions.length === 0) {
-      return null
-    }
+    return routeSessionId ?? null
+  }, [routeSessionId])
 
-    if (
-      routeSessionId &&
-      currentSessions.some((session) => session.id === routeSessionId)
-    ) {
-      return routeSessionId
-    }
-
-    return currentSessions[0]?.id ?? null
-  }, [currentSessions, routeSessionId])
-
+  // Auto-redirect to first session if no session is selected
   useEffect(() => {
-    if (!selectedProjectId) {
-      return
-    }
+    if (!selectedProjectId) return
+    if (routeSessionId) return
+    if (isNewSessionPending) return
+    if (!currentSessions || currentSessions.length === 0) return
 
-    if (!derivedSessionId) {
-      return
-    }
-
-    if (isNewSessionPending && !routeSessionId) {
-      return
-    }
-
-    const nextPath = buildSessionPath(selectedProjectId, derivedSessionId)
-
-    if (!routeSessionId) {
-      navigateTo(nextPath, { replace: true })
-      onSessionSelect?.({
-        sessionId: derivedSessionId,
-        projectId: selectedProjectId,
-      })
-      return
-    }
-
-    if (routeSessionId !== derivedSessionId) {
-      navigateTo(nextPath, { replace: true })
-      onSessionSelect?.({
-        sessionId: derivedSessionId,
-        projectId: selectedProjectId,
-      })
-    }
-  }, [
-    selectedProjectId,
-    routeSessionId,
-    derivedSessionId,
-    onSessionSelect,
-    isNewSessionPending,
-  ])
+    const firstSession = currentSessions[0]
+    navigateTo(buildSessionPath(selectedProjectId, firstSession.id), { replace: true })
+  }, [selectedProjectId, routeSessionId, isNewSessionPending, currentSessions])
 
   useEffect(() => {
     if (routeSessionId) {
@@ -357,13 +362,22 @@ export function LeftSidebar({
   }, [])
 
   const handleNewSessionClick = useCallback(() => {
-    if (!selectedProjectId) {
+    // Use selectedProjectId if available, otherwise let the system use default project
+    const targetProjectId = selectedProjectId || projects[0]?.id
+    console.log('[handleNewSessionClick]', {
+      selectedProjectId,
+      targetProjectId,
+      projectsCount: projects.length,
+      firstProject: projects[0]?.id,
+    })
+    if (!targetProjectId) {
+      // No projects at all - this shouldn't happen but handle gracefully
       return
     }
     setIsNewSessionPending(true)
-    navigateTo(buildProjectPath(selectedProjectId))
-    onNewSession?.(selectedProjectId)
-  }, [onNewSession, selectedProjectId])
+    navigateTo(buildProjectPath(targetProjectId))
+    onNewSession?.(targetProjectId)
+  }, [onNewSession, selectedProjectId, projects])
 
   const handleSessionClick = useCallback(
     (sessionId: string) => {
@@ -430,11 +444,28 @@ export function LeftSidebar({
         (session) => session.id === selectedSessionId,
       )
       if (exists) {
+        refreshAttemptsRef.current = 0
         return
       }
     }
 
-    void refreshSessionsForProject(selectedProjectId)
+    if (selectedSessionId !== lastMissingSessionIdRef.current) {
+      refreshAttemptsRef.current = 0
+      lastMissingSessionIdRef.current = selectedSessionId
+    }
+
+    if (refreshAttemptsRef.current >= 10) {
+      return
+    }
+
+    const delay = refreshAttemptsRef.current === 0 ? 0 : 500 * Math.pow(1.5, refreshAttemptsRef.current - 1)
+
+    const timer = setTimeout(() => {
+      refreshAttemptsRef.current++
+      void refreshSessionsForProject(selectedProjectId)
+    }, delay)
+
+    return () => clearTimeout(timer)
   }, [
     selectedProjectId,
     selectedSessionId,
@@ -448,7 +479,7 @@ export function LeftSidebar({
     <div className="flex h-full min-h-0 flex-col border-r bg-sidebar">
       <SidebarHeader
         onNewSession={handleNewSessionClick}
-        disabled={!selectedProjectId}
+        disabled={false}
         projectName={currentProject ? currentProject.name : null}
         latestActivity={currentProject ? currentProject.latestActivity : null}
       />
