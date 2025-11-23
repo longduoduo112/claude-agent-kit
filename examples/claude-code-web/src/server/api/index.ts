@@ -64,6 +64,7 @@ export function registerApiRoutes(
   options: RegisterApiRoutesOptions = {},
 ) {
   const { sdkClient, defaultSessionOptions, workspaceDir } = options
+  const hasAnthropicApiKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 
   app.use(
     '/api',
@@ -153,8 +154,11 @@ export function registerApiRoutes(
   })
 
   app.get('/api/capabilities', async (_req, res) => {
-    if (!sdkClient) {
-      res.status(503).json({ error: 'Capability inspection is not available' })
+    if (!sdkClient || !hasAnthropicApiKey) {
+      res.status(503).json({
+        error: 'Capability inspection is not available',
+        details: 'Set ANTHROPIC_API_KEY in the server environment to enable capability probing.',
+      })
       return
     }
 
