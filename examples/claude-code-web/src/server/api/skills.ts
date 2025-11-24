@@ -71,7 +71,10 @@ export function registerSkillUploadRoute(app: Express, options: SkillUploadOptio
       // Move contents from sourceDir to targetDir
       const sourceEntries = await fs.readdir(sourceDir)
       for (const entry of sourceEntries) {
-        await fs.rename(path.join(sourceDir, entry), path.join(targetDir, entry))
+        const src = path.join(sourceDir, entry)
+        const dest = path.join(targetDir, entry)
+        // Use copy instead of rename to avoid EXDEV errors when /tmp is on a different device
+        await fs.cp(src, dest, { recursive: true })
       }
 
       res.json({ ok: true, skillPath: targetDir })
