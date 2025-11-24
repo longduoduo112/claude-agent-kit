@@ -65,6 +65,27 @@ docker compose up --build
 docker compose down
 ```
 
+## FAQ / 常见问题
+
+- **Capabilities 面板为空 / `/api/capabilities` 报错，日志显示 `Claude Code process exited with code 1` 且包含 `--dangerously-skip-permissions cannot be used with root/sudo`**
+
+  容器以 root 运行时，如果权限模式是 `bypassPermissions`（等价于开启 skip-permissions），Claude Code 子进程会直接退出。解决办法：
+
+  1) 默认使用 `permissionMode: 'plan'`（已在代码中设置），重新构建镜像部署即可；
+  2) 如果确实需要跳过权限提示，请将容器改为非 root 用户运行（例如 `docker run -u 1000:1000 ...` 或在 Dockerfile/Compose 中设置 user），再切回 `bypassPermissions`。
+
+- **使用代理/兼容端点 (GLM 等) 时，能力探针或 Claude Code 子进程退出**
+
+  打开调试输出定位：在容器环境加 `DEBUG=1`（可选 `CLAUDE_CODE_DEBUG_LOGS_DIR=/app/agent/.claude/logs`），重试 `/api/capabilities` 后查看 `docker logs` 或日志目录，按报错调整；未能修复时可暂时锁定 SDK 旧版（例如 0.1.47）。
+
+- **部署 behind 反向代理时 rate limit 报 `X-Forwarded-For` 错误**
+
+  代码已在 server 侧 `app.set('trust proxy', 1)`；确保代理正确传递 `X-Forwarded-For`/`X-Forwarded-Proto`。如果有多层代理可将 trust proxy 配置为跳数或 `true`。
+
+- **CORS 预检失败 (带 Authorization/x-api-key)**
+
+  代码已允许 `Authorization`/`X-API-Key` 头；如自定义头请在服务端 CORS 配置中补充。
+
 ## Server Wiring (simplified)
 ```ts
 // src/server/server.ts
