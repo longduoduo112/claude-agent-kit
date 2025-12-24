@@ -1,0 +1,40 @@
+2025-12-23T15:53:46.286Z [DEBUG] Using bash path: "C:\Program Files\Git\bin\bash.exe"
+2025-12-23T15:53:46.289Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-23T15:53:46.290Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-23T15:53:46.290Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-23T15:53:46.291Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-12-23T15:53:46.291Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-12-23T15:53:46.311Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-23T15:53:46.319Z [DEBUG] Total LSP servers loaded: 0
+2025-12-23T15:53:46.333Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-12-23T15:53:46.333Z [DEBUG] LSP manager initialized with 0 servers
+2025-12-23T15:53:46.357Z [DEBUG] LSP server manager initialized successfully
+2025-12-23T15:53:46.357Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-23T15:53:46.372Z [DEBUG] Loading skills from directories: managed=C:\ProgramData\ClaudeCode\.claude\skills, user=E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\skills, project=E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\skills
+2025-12-23T15:53:46.372Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-12-23T15:53:46.919Z [DEBUG] Creating shell snapshot for bash (C:\Program Files\Git\bin\bash.exe)
+2025-12-23T15:53:46.920Z [DEBUG] Looking for shell config file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc
+2025-12-23T15:53:46.920Z [DEBUG] Shell config file not found: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc, creating snapshot with Claude Code defaults only
+2025-12-23T15:53:46.920Z [DEBUG] Snapshots directory: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots
+2025-12-23T15:53:46.935Z [DEBUG] Creating snapshot at: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots\snapshot-bash-1766505226920-n4i7z3.sh
+2025-12-23T15:53:46.935Z [DEBUG] Shell binary exists: true
+2025-12-23T15:53:46.935Z [DEBUG] Execution timeout: 10000ms
+2025-12-23T15:53:46.945Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\c9b17a16-055e-4a3a-9a63-e6133b50be42-agent-c9b17a16-055e-4a3a-9a63-e6133b50be42.json.tmp.19060.1766505226945
+2025-12-23T15:53:46.950Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-23T15:53:46.950Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\c9b17a16-055e-4a3a-9a63-e6133b50be42-agent-c9b17a16-055e-4a3a-9a63-e6133b50be42.json.tmp.19060.1766505226945 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\c9b17a16-055e-4a3a-9a63-e6133b50be42-agent-c9b17a16-055e-4a3a-9a63-e6133b50be42.json
+2025-12-23T15:53:46.951Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\c9b17a16-055e-4a3a-9a63-e6133b50be42-agent-c9b17a16-055e-4a3a-9a63-e6133b50be42.json written atomically
+2025-12-23T15:53:46.952Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-23T15:53:46.953Z [DEBUG] Total plugin skills loaded: 0
+2025-12-23T15:53:46.953Z [DEBUG] Total plugin commands loaded: 0
+2025-12-23T15:53:46.953Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-23T15:53:46.954Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-23T15:53:46.955Z [DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+2025-12-23T15:53:46.955Z [DEBUG] Total plugin agents loaded: 0
+2025-12-23T15:53:47.006Z [ERROR] "Error: Error: Error opening file E:\\tataanAI\\claude-agent-kit\\examples\\claude-code-web\\.claude\\projects\\E--tataanAI-claude-agent-kit-examples-claude-code-web\\08751bd1-1ed2-4412-9504-1e8f94ce8d63.jsonl: Error: ENOENT: no such file or directory, open 'E:\\tataanAI\\claude-agent-kit\\examples\\claude-code-web\\.claude\\projects\\E--tataanAI-claude-agent-kit-examples-claude-code-web\\08751bd1-1ed2-4412-9504-1e8f94ce8d63.jsonl'\n    at Qs (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:89:170)\n    at async nTA (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4083:2732)\n    at async fI9.getLastLog (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4082:976)\n    at async ET2 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4083:3290)\n    at async wi (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:2523:8487)\n    at async eM3 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4296:87)\n    at async hX9 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4284:35)"
+2025-12-23T15:53:47.010Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2025-12-23T15:53:47.011Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:53:47.011Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)
+2025-12-23T15:53:47.012Z [DEBUG] LSP server manager shut down successfully
+2025-12-23T15:53:47.013Z [DEBUG] BigQuery metrics exporter flush complete
+2025-12-23T15:53:47.013Z [DEBUG] BigQuery metrics exporter flush complete
+2025-12-23T15:53:47.013Z [DEBUG] BigQuery metrics exporter shutdown complete

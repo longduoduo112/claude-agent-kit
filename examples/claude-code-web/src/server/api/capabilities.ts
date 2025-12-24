@@ -30,6 +30,7 @@ export type LocalSkillInfo = {
 }
 
 const CAPABILITY_PROMPT = 'claude-agent-sdk-capability-probe'
+const DEFAULT_CAPABILITY_PROBE_TIMEOUT_MS = 30_000
 
 export async function collectCapabilitySummary(
   sdkClient: IClaudeAgentSDKClient,
@@ -37,6 +38,17 @@ export async function collectCapabilitySummary(
   workspaceDir?: string,
 ): Promise<CapabilitySummary> {
   const abortController = new AbortController()
+  const configuredTimeoutMs = Number(process.env.CAPABILITY_PROBE_TIMEOUT_MS)
+  const timeoutMs =
+    Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
+      ? configuredTimeoutMs
+      : DEFAULT_CAPABILITY_PROBE_TIMEOUT_MS
+  let timedOut = false
+  const timeoutHandle = setTimeout(() => {
+    timedOut = true
+    abortController.abort()
+  }, timeoutMs)
+
   const options = buildCapabilityOptions(sessionOptions, abortController)
   const stream = sdkClient.queryStream(CAPABILITY_PROMPT, options)
 
@@ -55,10 +67,14 @@ export async function collectCapabilitySummary(
       throw error
     }
   } finally {
+    clearTimeout(timeoutHandle)
     abortController.abort()
   }
 
   if (!initMessage) {
+    if (timedOut) {
+      throw new Error(`Capability probe timed out after ${timeoutMs}ms`)
+    }
     throw new Error('Claude Agent SDK did not emit an init message')
   }
 

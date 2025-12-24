@@ -13,7 +13,22 @@ type RawMcpServerConfig =
   | RawMcpSseConfig
   | RawMcpHttpConfig
 
+type RawMcpBaseConfig = {
+  /**
+   * 是否启用该 MCP Server。
+   * - true/undefined：启用（默认）
+   * - false：禁用（会被跳过）
+   */
+  enabled?: boolean
+  /**
+   * 仅当这些环境变量全部存在且非空时才启用该 MCP Server。
+   * 主要用于像 Jina 这类必须提供 token 的服务，避免无 token 时长时间连接超时。
+   */
+  requiredEnv?: string[]
+}
+
 type RawMcpStdioConfig = {
+  requiredEnv?: string[]
   type?: 'stdio'
   command?: string
   args?: string[]
@@ -21,12 +36,14 @@ type RawMcpStdioConfig = {
 }
 
 type RawMcpSseConfig = {
+  requiredEnv?: string[]
   type: 'sse'
   url?: string
   headers?: Record<string, string>
 }
 
 type RawMcpHttpConfig = {
+  requiredEnv?: string[]
   type: 'http'
   url?: string
   headers?: Record<string, string>
@@ -61,6 +78,19 @@ function expandTemplate(value: string, env: Record<string, string | undefined>):
 
     return resolved
   })
+}
+
+function isLikelyPlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) {
+    return true
+  }
+  return (
+    normalized === 'change-me' ||
+    normalized.startsWith('replace-with') ||
+    normalized.includes('your-jina-key') ||
+    normalized.includes('your-api-key')
+  )
 }
 
 function expandArgs(args: string[] | undefined, env: Record<string, string | undefined>): string[] | undefined {
@@ -145,6 +175,7 @@ function normalizeHttpConfig(
 }
 
 function normalizeServerConfig(
+  name: string,
   config: RawMcpServerConfig,
   env: Record<string, string | undefined>,
 ): McpServerConfig | null {
@@ -152,6 +183,35 @@ function normalizeServerConfig(
     console.warn('[MCP] Encountered invalid server configuration entry.')
     return null
   }
+
+  const enabled = (config as RawMcpBaseConfig).enabled
+  if (enabled === false) {
+    console.warn(`[MCP] Skipping server '${name}' because it is disabled.`)
+    return null
+  }
+
+  const requiredEnv = (config as RawMcpBaseConfig).requiredEnv
+  if (Array.isArray(requiredEnv) && requiredEnv.length > 0) {
+    const missing = requiredEnv
+      .map((key) => key?.trim())
+      .filter((key): key is string => Boolean(key))
+      .filter((key) => {
+        const resolved = env[key] ?? process.env[key]
+        if (resolved === undefined || resolved === null) {
+          return true
+        }
+        const stringValue = String(resolved)
+        return isLikelyPlaceholder(stringValue)
+      })
+
+    if (missing.length > 0) {
+      console.warn(
+        `[MCP] Skipping server '${name}' because required env is missing: ${missing.join(', ')}`,
+      )
+      return null
+    }
+  }
+
   const type = config?.type ?? 'stdio'
   switch (type) {
     case 'stdio':
@@ -185,18 +245,29 @@ function normalizeConfig(
   const servers: Record<string, McpServerConfig> = {}
   if (config.mcpServers && typeof config.mcpServers === 'object') {
     for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
-      const normalized = normalizeServerConfig(serverConfig, env)
+      const normalized = normalizeServerConfig(name, serverConfig, env)
       if (normalized) {
         servers[name] = normalized
-      } else {
-        console.warn(`[MCP] Skipped server '${name}' from ${configPath} due to invalid configuration.`)
       }
     }
   }
 
+  const allowedTools = normalizeAllowedTools(config.allowedTools).filter((tool) => {
+    if (!tool.startsWith('mcp__')) {
+      return true
+    }
+    // mcp__<server>__<tool>
+    const parts = tool.split('__')
+    const serverName = parts[1]
+    if (!serverName) {
+      return false
+    }
+    return Boolean(servers[serverName])
+  })
+
   return {
     mcpServers: servers,
-    allowedTools: normalizeAllowedTools(config.allowedTools),
+    allowedTools,
   }
 }
 

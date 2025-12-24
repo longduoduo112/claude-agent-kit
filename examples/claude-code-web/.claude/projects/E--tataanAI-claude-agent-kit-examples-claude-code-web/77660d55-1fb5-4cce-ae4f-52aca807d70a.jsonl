@@ -1,0 +1,2 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2025-12-23T15:37:10.576Z","content":[{"type":"text","text":"我安装的是比较新的版本0.1.76，可能一些残留的配置文件没有修改过来，还是0.1.47，统一修改为使用新版本"}],"sessionId":"77660d55-1fb5-4cce-ae4f-52aca807d70a"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2025-12-23T15:37:10.576Z","sessionId":"77660d55-1fb5-4cce-ae4f-52aca807d70a"}

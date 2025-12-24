@@ -1,0 +1,99 @@
+2025-12-23T15:36:39.943Z [DEBUG] Using bash path: "C:\Program Files\Git\bin\bash.exe"
+2025-12-23T15:36:39.945Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-23T15:36:39.946Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-23T15:36:39.946Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-23T15:36:39.946Z [DEBUG] [LSP SERVER MANAGER] initialize() called
+2025-12-23T15:36:39.947Z [DEBUG] [LSP SERVER MANAGER] Calling getAllLspServers()
+2025-12-23T15:36:39.965Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-23T15:36:39.973Z [DEBUG] Total LSP servers loaded: 0
+2025-12-23T15:36:39.983Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2025-12-23T15:36:39.984Z [DEBUG] LSP manager initialized with 0 servers
+2025-12-23T15:36:40.002Z [DEBUG] LSP server manager initialized successfully
+2025-12-23T15:36:40.003Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-23T15:36:40.011Z [DEBUG] Loading skills from directories: managed=C:\ProgramData\ClaudeCode\.claude\skills, user=E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\skills, project=E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\skills
+2025-12-23T15:36:40.012Z [DEBUG] >>>>> getPluginSkills CALLED <<<<<
+2025-12-23T15:36:40.417Z [DEBUG] Creating shell snapshot for bash (C:\Program Files\Git\bin\bash.exe)
+2025-12-23T15:36:40.418Z [DEBUG] Looking for shell config file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc
+2025-12-23T15:36:40.418Z [DEBUG] Shell config file not found: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc, creating snapshot with Claude Code defaults only
+2025-12-23T15:36:40.419Z [DEBUG] Snapshots directory: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots
+2025-12-23T15:36:40.430Z [DEBUG] Creating snapshot at: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots\snapshot-bash-1766504200419-dzzlwk.sh
+2025-12-23T15:36:40.430Z [DEBUG] Shell binary exists: true
+2025-12-23T15:36:40.430Z [DEBUG] Execution timeout: 10000ms
+2025-12-23T15:36:40.440Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\77660d55-1fb5-4cce-ae4f-52aca807d70a-agent-77660d55-1fb5-4cce-ae4f-52aca807d70a.json.tmp.14952.1766504200440
+2025-12-23T15:36:40.445Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-23T15:36:40.446Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\77660d55-1fb5-4cce-ae4f-52aca807d70a-agent-77660d55-1fb5-4cce-ae4f-52aca807d70a.json.tmp.14952.1766504200440 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\77660d55-1fb5-4cce-ae4f-52aca807d70a-agent-77660d55-1fb5-4cce-ae4f-52aca807d70a.json
+2025-12-23T15:36:40.446Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\77660d55-1fb5-4cce-ae4f-52aca807d70a-agent-77660d55-1fb5-4cce-ae4f-52aca807d70a.json written atomically
+2025-12-23T15:36:40.448Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-23T15:36:40.448Z [DEBUG] Total plugin skills loaded: 0
+2025-12-23T15:36:40.448Z [DEBUG] Total plugin commands loaded: 0
+2025-12-23T15:36:40.449Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-23T15:36:40.450Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, duplicates removed: 0)
+2025-12-23T15:36:40.451Z [DEBUG] getSkillsIfEnabled returning: 0 skill dir commands, 0 plugin skills
+2025-12-23T15:36:40.451Z [DEBUG] Total plugin agents loaded: 0
+2025-12-23T15:36:40.472Z [DEBUG] MCP server "workspace-filesystem": Starting connection with timeout of 30000ms
+2025-12-23T15:36:40.502Z [DEBUG] MCP server "jina-mcp-server": SSE transport initialized, awaiting connection
+2025-12-23T15:36:40.506Z [DEBUG] MCP server "jina-mcp-server": Starting connection with timeout of 30000ms
+2025-12-23T15:36:40.509Z [DEBUG] MCP server "jina-mcp-server": No token data found
+2025-12-23T15:36:40.510Z [DEBUG] MCP server "jina-mcp-server": No token data found
+2025-12-23T15:36:40.645Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-23T15:36:40.645Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:36:40.645Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-23T15:36:40.646Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-23T15:36:40.646Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:36:40.646Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-23T15:36:40.991Z [DEBUG] Shell snapshot created successfully (409 bytes)
+2025-12-23T15:36:41.374Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504201374
+2025-12-23T15:36:41.374Z [DEBUG] Preserving file permissions: 100666
+2025-12-23T15:36:41.379Z [DEBUG] Temp file written successfully, size: 362 bytes
+2025-12-23T15:36:41.379Z [DEBUG] Applied original permissions to temp file
+2025-12-23T15:36:41.380Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504201374 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json
+2025-12-23T15:36:41.380Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json written atomically
+2025-12-23T15:36:41.383Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504201383
+2025-12-23T15:36:41.383Z [DEBUG] Preserving file permissions: 100666
+2025-12-23T15:36:41.388Z [DEBUG] Temp file written successfully, size: 362 bytes
+2025-12-23T15:36:41.389Z [DEBUG] Applied original permissions to temp file
+2025-12-23T15:36:41.389Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504201383 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json
+2025-12-23T15:36:41.390Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json written atomically
+2025-12-23T15:36:44.407Z [DEBUG] Stream started - received first chunk
+2025-12-23T15:36:44.719Z [DEBUG] Stream started - received first chunk
+2025-12-23T15:36:44.867Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-23T15:36:44.868Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:36:44.869Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-23T15:36:45.781Z [ERROR] MCP server "workspace-filesystem" Server stderr: Secure MCP Filesystem Server running on stdio
+2025-12-23T15:36:45.786Z [DEBUG] MCP server "workspace-filesystem": Successfully connected to stdio server in 5332ms
+2025-12-23T15:36:45.788Z [DEBUG] MCP server "workspace-filesystem": Connection established with capabilities: {"hasTools":true,"hasPrompts":false,"hasResources":false,"serverVersion":{"name":"secure-filesystem-server","version":"0.2.0"}}
+2025-12-23T15:36:45.792Z [DEBUG] MCP server "workspace-filesystem": Received ListRoots request from server
+2025-12-23T15:36:45.796Z [ERROR] MCP server "workspace-filesystem" Server stderr: Updated allowed directories from MCP roots: 1 valid directories
+2025-12-23T15:36:48.335Z [DEBUG] Getting matching hook commands for SubagentStop with query: undefined
+2025-12-23T15:36:48.335Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:36:48.336Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-23T15:37:10.518Z [DEBUG] MCP server "jina-mcp-server": Connection timeout triggered after 30037ms (limit: 30000ms)
+2025-12-23T15:37:10.532Z [DEBUG] MCP server "jina-mcp-server": SSE Connection failed after 30039ms: {"url":"https://mcp.jina.ai/sse","error":"Connection to MCP server \"jina-mcp-server\" timed out after 30000ms","errorType":"Error","stack":"Error: Connection to MCP server \"jina-mcp-server\" timed out after 30000ms\n    at Timeout._onTimeout (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4112:16669)\n    at listOnTimeout (node:internal/timers:605:17)\n    at process.processTimers (node:internal/timers:541:7)"}
+2025-12-23T15:37:10.533Z [ERROR] MCP server "jina-mcp-server" Error: Connection to MCP server "jina-mcp-server" timed out after 30000ms
+2025-12-23T15:37:10.535Z [DEBUG] MCP server "jina-mcp-server": Connection failed after 30054ms: Connection to MCP server "jina-mcp-server" timed out after 30000ms
+2025-12-23T15:37:10.535Z [ERROR] MCP server "jina-mcp-server" Connection failed: Connection to MCP server "jina-mcp-server" timed out after 30000ms
+2025-12-23T15:37:10.562Z [ERROR] "Error: Error: Error opening file E:\\tataanAI\\claude-agent-kit\\examples\\claude-code-web\\.claude\\projects\\E--tataanAI-claude-agent-kit-examples-claude-code-web\\0b4dbb78-da9f-458d-bc25-7bcad8b7e963.jsonl: Error: ENOENT: no such file or directory, open 'E:\\tataanAI\\claude-agent-kit\\examples\\claude-code-web\\.claude\\projects\\E--tataanAI-claude-agent-kit-examples-claude-code-web\\0b4dbb78-da9f-458d-bc25-7bcad8b7e963.jsonl'\n    at Qs (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:89:170)\n    at async nTA (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4083:2732)\n    at async fI9.getLastLog (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4082:976)\n    at async ET2 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4083:3290)\n    at async wi (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:2523:8487)\n    at async eM3 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4296:87)\n    at async hX9 (file:///E:/tataanAI/claude-agent-kit/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk@0.1.47_zod@4.1.12/node_modules/@anthropic-ai/claude-agent-sdk/cli.js:4284:35)"
+2025-12-23T15:37:10.565Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2025-12-23T15:37:10.565Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:37:10.565Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)
+2025-12-23T15:37:10.566Z [DEBUG] Cleaned up session snapshot: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots\snapshot-bash-1766504200419-dzzlwk.sh
+2025-12-23T15:37:10.567Z [DEBUG] MCP server "workspace-filesystem": Sending SIGINT to MCP server process
+2025-12-23T15:37:10.568Z [DEBUG] LSP server manager shut down successfully
+2025-12-23T15:37:10.574Z [DEBUG] Total plugin output styles loaded: 0
+2025-12-23T15:37:10.628Z [DEBUG] MCP server "workspace-filesystem": MCP server process exited cleanly
+2025-12-23T15:37:10.642Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2025-12-23T15:37:10.643Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2025-12-23T15:37:10.644Z [DEBUG] Hooks: Found 0 total hooks in registry
+2025-12-23T15:37:10.644Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2025-12-23T15:37:10.647Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504230647
+2025-12-23T15:37:10.647Z [DEBUG] Preserving file permissions: 100666
+2025-12-23T15:37:10.653Z [DEBUG] Temp file written successfully, size: 361 bytes
+2025-12-23T15:37:10.654Z [DEBUG] Applied original permissions to temp file
+2025-12-23T15:37:10.655Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json.tmp.14952.1766504230647 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json
+2025-12-23T15:37:10.656Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude.json written atomically
+2025-12-23T15:37:10.658Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2025-12-23T15:37:10.659Z [DEBUG] Found 0 hook matchers in settings
+2025-12-23T15:37:10.659Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2025-12-23T15:37:10.668Z [DEBUG] Slash commands included in SlashCommand tool:
+2025-12-23T15:37:10.669Z [DEBUG] Skills and commands included in Skill tool:
+2025-12-23T15:37:12.567Z [ERROR] "\nOpenTelemetry telemetry flush timed out after 2000ms\n\nTo resolve this issue, you can:\n1. Increase the timeout by setting CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS env var (e.g., 5000 for 5 seconds)\n2. Check if your OpenTelemetry backend is experiencing scalability issues\n3. Disable OpenTelemetry by unsetting CLAUDE_CODE_ENABLE_TELEMETRY env var\n\nCurrent timeout: 2000ms\n"

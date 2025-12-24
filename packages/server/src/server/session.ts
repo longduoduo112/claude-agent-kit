@@ -386,7 +386,7 @@ export class Session {
           this.processIncomingMessage(message);
         }
       } catch (error) {
-        console.error(`Error in session ${this.sessionId}:`, error);
+        console.error(`Error in session ${this.sessionId}:`, enrichSdkErrorForLogs(error));
         this.error = error instanceof Error ? error : String(error);
       } finally {
         this.queryPromise = null;
@@ -482,4 +482,54 @@ function extractTimestamp(value: unknown): number | null {
   }
 
   return null;
+}
+
+function enrichSdkErrorForLogs(error: unknown): unknown {
+  if (!error || typeof error !== "object") {
+    return error;
+  }
+
+  const record = error as Record<string, unknown>;
+  const stderrRaw = record.stderr;
+  const stdoutRaw = record.stdout;
+
+  const stderr = truncateText(asText(stderrRaw), 4000);
+  const stdout = truncateText(asText(stdoutRaw), 2000);
+
+  return {
+    ...record,
+    ...(stderr ? { stderr } : {}),
+    ...(stdout ? { stdout } : {}),
+  };
+}
+
+function asText(value: unknown): string | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value instanceof Uint8Array) {
+    try {
+      return new TextDecoder().decode(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function truncateText(value: string | null, maxChars: number): string | null {
+  if (!value) {
+    return null;
+  }
+  const text = value.trim();
+  if (!text) {
+    return null;
+  }
+  if (text.length <= maxChars) {
+    return text;
+  }
+  return `${text.slice(0, maxChars)}\n…(truncated)`;
 }

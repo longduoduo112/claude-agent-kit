@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "bun run server/server.ts",
-    "build": "bun build ./client/index.tsx --outdir=./dist",
+    "build": "node scripts/build.js",
     "start": "bun run server/server.ts",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -23,7 +23,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.47",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@codesandbox/sandpack-react": "^2.20.0",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-collapsible": "^1.1.12",

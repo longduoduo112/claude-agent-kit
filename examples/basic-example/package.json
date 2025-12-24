@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "bun run server/server.ts",
-    "build": "bun build ./client/index.tsx --outdir=./dist",
+    "build": "node scripts/build.js",
     "start": "bun run server/server.ts",
     "test": "jest",
     "test:watch": "jest --watch",

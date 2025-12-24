@@ -51,6 +51,7 @@ Environment variables:
 - `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_URL`, `ANTHROPIC_MODEL` (optional overrides for Claude-compatible endpoints)
 - `PORT` (default `5173`)
 - `WORKSPACE_DIR` (optional, defaults to `<project>/agent`; controls where skills/uploads are stored)
+- `CLAUDE_HOME`, `CLAUDE_AGENT_HOME` (optional, controls where Claude Code writes `.claude/`; if unset, this example defaults it to `WORKSPACE_DIR` to keep multi-turn resume stable)
 - `API_AUTH_TOKEN` (optional, protects `/api` with an API key; send `Authorization: Bearer <token>` or `x-api-key: <token>`)
 - `API_RATE_LIMIT_WINDOW_MS`, `API_RATE_LIMIT_MAX` (optional, express-rate-limit config; defaults 15m/300)
 
@@ -166,9 +167,10 @@ Claude Code Web can load [Model Context Protocol](https://modelcontextprotocol.i
 - String values support `${ENV}` or `${ENV:-fallback}` templating. `WORKSPACE_DIR` and `PROJECT_ROOT` are automatically supplied.
 - Set `allowedTools` to the fully qualified tool names (`mcp__<server>__<tool>`) that Claude is allowed to use. These are merged with the default tool list during startup.
 
-The default `.mcp.json` wires up two servers:
+默认的 `.mcp.json` 仅启用 1 个 MCP Server：
 
-1. `workspace-filesystem`: `npx @modelcontextprotocol/server-filesystem ${WORKSPACE_DIR}` gives Claude a sandboxed filesystem MCP server scoped to the agent workspace.
-2. `jina-mcp-server`: connects to [Jina AI's hosted MCP endpoint](https://mcp.jina.ai) for web search, screenshotting, dedupe, etc. To use it, set `JINA_API_KEY` in your `.env` (Compose passes it through automatically).
+1. `workspace-filesystem`：`npx @modelcontextprotocol/server-filesystem ${WORKSPACE_DIR}`，为 Claude 提供受限的文件系统能力（作用域为 agent 工作目录）。
 
-Feel free to add more entries (SSE, HTTP, or stdio) following the SDK docs and redeploy.
+关于 `jina-mcp-server`：此前示例里默认包含该 SSE MCP Server，但在部分 Windows/网络环境下，如果 SSE 连接建立失败或长时间无响应，Claude Code 可能会等待连接超时并以 `code=1` 退出，进而导致 Web 端会话中断（表现为 “Claude Code process exited with code 1”）。因此本示例默认不再内置 `jina-mcp-server`。
+
+如确需启用联网检索/截图等能力，建议优先使用 Claude Code 内置的 `WebSearch`/`WebFetch` 工具；或自行在 `.mcp.json` 中添加/启用 SSE/HTTP/stdio 类型的 MCP Server（请确保该 Server 在你的网络环境下稳定可连）。

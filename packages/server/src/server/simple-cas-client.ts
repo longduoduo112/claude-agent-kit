@@ -33,6 +33,18 @@ export class SimpleClaudeAgentSDKClient implements IClaudeAgentSDKClient {
     this.config = config;
   }
 
+  private ensureNonEssentialTrafficDisabled(env: Record<string, string | undefined>): void {
+    // 在部分网络环境下，Claude Code 的 1P 事件上报（OpenTelemetry logs exporter）可能反复失败，
+    // 并在进程退出/flush 时导致 Claude Code 以 code=1 退出（表现为 SDK 抛出 “Claude Code process exited with code 1”）。
+    // 这里默认关闭非必要流量，避免影响核心对话能力；如需开启可显式传入/设置为 "0"。
+    if (env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC == null) {
+      env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+    }
+    if (env.DISABLE_ERROR_REPORTING == null) {
+      env.DISABLE_ERROR_REPORTING = "1";
+    }
+  }
+
   async *queryStream(
     prompt: string | AsyncIterable<SDKUserMessage>,
     options?: Partial<SDKOptions>
@@ -55,6 +67,12 @@ export class SimpleClaudeAgentSDKClient implements IClaudeAgentSDKClient {
     if (claudeHome) {
       try {
         await ensureClaudeDirectories(claudeHome);
+        if (!customEnv.CLAUDE_HOME) {
+          customEnv.CLAUDE_HOME = claudeHome;
+        }
+        if (!customEnv.CLAUDE_AGENT_HOME) {
+          customEnv.CLAUDE_AGENT_HOME = claudeHome;
+        }
         if (!customEnv.HOME) {
           customEnv.HOME = claudeHome;
         }
@@ -67,7 +85,12 @@ export class SimpleClaudeAgentSDKClient implements IClaudeAgentSDKClient {
     }
 
     // Merge with existing options and add custom environment
-    const baseEnv = options?.env ?? process.env ?? {};
+    const baseEnv = { ...(options?.env ?? process.env ?? {}) } as Record<
+      string,
+      string | undefined
+    >;
+    this.ensureNonEssentialTrafficDisabled(baseEnv);
+    this.ensureNonEssentialTrafficDisabled(customEnv);
     const mergedOptions: Partial<SDKOptions> = {
       ...options,
       env: {

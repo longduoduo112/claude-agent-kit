@@ -32,6 +32,7 @@ export function useOutcomingMessageHandler() {
   const setSessionId = useSetAtom(chatSessionIdAtom)
   const setMessages = useSetAtom(chatMessagesAtom)
   const setSessionInfo = useSetAtom(chatSessionInfoAtom)
+  const currentSessionId = useAtomValue(chatSessionIdAtom)
 
   return useCallback(
     (payload: OutcomingMessage) => {
@@ -53,7 +54,13 @@ export function useOutcomingMessageHandler() {
         })
       }
 
-      setSessionId(payload.sessionId ?? null)
+      // 避免被 `sessionId: null` 的状态广播回写，导致前端丢失当前会话 ID，
+      // 进而下一条消息被当作“新会话”发送（触发 `--resume`/会话目录不一致等问题）。
+      if (payload.sessionId) {
+        setSessionId(payload.sessionId)
+      } else if (currentSessionId == null) {
+        setSessionId(null)
+      }
 
       if (payload.type === 'message_added') {
         setMessages((previous) => {
@@ -78,7 +85,7 @@ export function useOutcomingMessageHandler() {
         }))
       }
     },
-    [setMessages, setSessionId, setSessionInfo],
+    [currentSessionId, setMessages, setSessionId, setSessionInfo],
   )
 }
 

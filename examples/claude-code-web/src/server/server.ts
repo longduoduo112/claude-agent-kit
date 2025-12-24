@@ -24,6 +24,20 @@ export async function createServer(options: CreateServerOptions = {}) {
   const workspaceDir = process.env.WORKSPACE_DIR ?? path.resolve(root, 'agent')
   await fs.mkdir(workspaceDir, { recursive: true })
   process.env.WORKSPACE_DIR = workspaceDir
+  // 固定 Claude Code 的“主目录”（保存会话、debug、shell snapshot 等）。
+  // 这能避免多进程/多轮对话时因 cwd 漂移而写入不同 `.claude` 根目录，进而导致 `--resume` 找不到会话、进程 code=1 退出。
+  // 如需启用“每个项目目录各自维护 .claude”的行为，可在环境中显式设置 CLAUDE_HOME/CLAUDE_AGENT_HOME 覆盖这里的默认值。
+  if (!process.env.CLAUDE_HOME) {
+    process.env.CLAUDE_HOME = workspaceDir
+  }
+  if (!process.env.CLAUDE_AGENT_HOME) {
+    process.env.CLAUDE_AGENT_HOME = process.env.CLAUDE_HOME
+  }
+  // Provide a stable project root env var for `.mcp.json` templating and tooling.
+  // Some Claude Code components resolve `${PROJECT_ROOT}` using process.env only.
+  if (!process.env.PROJECT_ROOT) {
+    process.env.PROJECT_ROOT = root
+  }
 
   const app = express()
   // Trust the first reverse proxy (e.g., Nginx/ingress) so rate limiting uses the real client IP

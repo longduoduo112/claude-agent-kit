@@ -1,0 +1,69 @@
+2025-12-24T03:48:02.223Z [DEBUG] Using bash path: "C:\Program Files\Git\bin\bash.exe"
+2025-12-24T03:48:02.247Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2025-12-24T03:48:02.247Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2025-12-24T03:48:02.247Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2025-12-24T03:48:02.250Z [DEBUG] LSP server manager initialized successfully
+2025-12-24T03:48:02.250Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2025-12-24T03:48:02.250Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2025-12-24T03:48:02.253Z [DEBUG] Stats cache does not exist, returning empty cache
+2025-12-24T03:48:02.253Z [DEBUG] Stats cache empty, processing all historical data in background
+2025-12-24T03:48:02.256Z [DEBUG] Plugin autoupdate: skipped (auto-updater disabled)
+2025-12-24T03:48:02.261Z [DEBUG] Loading skills from: managed=C:\ProgramData\ClaudeCode\.claude\skills, user=E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\skills, project=[]
+2025-12-24T03:48:02.660Z [DEBUG] [SLOW OPERATION DETECTED] execSyncWithDefaults_DEPRECATED (381.5ms): tasklist | findstr /I "Code.exe Cursor.exe Windsurf.exe idea64.exe pycharm64.exe webstorm64.exe phps
+2025-12-24T03:48:02.661Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2025-12-24T03:48:02.711Z [DEBUG] Creating shell snapshot for bash (C:\Program Files\Git\bin\bash.exe)
+2025-12-24T03:48:02.712Z [DEBUG] Looking for shell config file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc
+2025-12-24T03:48:02.712Z [DEBUG] Shell config file not found: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.bashrc, creating snapshot with Claude Code defaults only
+2025-12-24T03:48:02.712Z [DEBUG] Snapshots directory: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots
+2025-12-24T03:48:02.726Z [DEBUG] Creating snapshot at: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\shell-snapshots\snapshot-bash-1766548082712-hdlfo5.sh
+2025-12-24T03:48:02.726Z [DEBUG] Shell binary exists: true
+2025-12-24T03:48:02.726Z [DEBUG] Execution timeout: 10000ms
+2025-12-24T03:48:02.738Z [DEBUG] Writing to temp file: E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\3ececed1-5b93-4484-8038-fb3819ee6530-agent-3ececed1-5b93-4484-8038-fb3819ee6530.json.tmp.29300.1766548082738
+2025-12-24T03:48:02.743Z [DEBUG] [SLOW OPERATION DETECTED] fs.writeFileSync (5.2ms)
+2025-12-24T03:48:02.743Z [DEBUG] Temp file written successfully, size: 2 bytes
+2025-12-24T03:48:02.743Z [DEBUG] Renaming E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\3ececed1-5b93-4484-8038-fb3819ee6530-agent-3ececed1-5b93-4484-8038-fb3819ee6530.json.tmp.29300.1766548082738 to E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\3ececed1-5b93-4484-8038-fb3819ee6530-agent-3ececed1-5b93-4484-8038-fb3819ee6530.json
+2025-12-24T03:48:02.744Z [DEBUG] File E:\tataanAI\claude-agent-kit\examples\claude-code-web\.claude\todos\3ececed1-5b93-4484-8038-fb3819ee6530-agent-3ececed1-5b93-4484-8038-fb3819ee6530.json written atomically
+2025-12-24T03:48:02.746Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2025-12-24T03:48:02.746Z [DEBUG] Total plugin skills loaded: 0
+2025-12-24T03:48:02.746Z [DEBUG] Total plugin commands loaded: 0
+2025-12-24T03:48:02.746Z [DEBUG] Registered 0 hooks from 0 plugins
+2025-12-24T03:48:02.748Z [DEBUG] Total plugin agents loaded: 0
+2025-12-24T03:48:02.748Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2025-12-24T03:48:02.748Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills
+2025-12-24T03:48:02.759Z [DEBUG] MCP server "workspace-filesystem": Starting connection with timeout of 30000ms
+2025-12-24T03:48:02.813Z [DEBUG] Git remote URL: https://github.com/longduoduo112/claude-agent-kit.git
+2025-12-24T03:48:02.813Z [DEBUG] Parsed repository: longduoduo112/claude-agent-kit from https://github.com/longduoduo112/claude-agent-kit.git
+2025-12-24T03:48:02.813Z [DEBUG] Parsed repository: longduoduo112/claude-agent-kit from URL: https://github.com/longduoduo112/claude-agent-kit.git
+2025-12-24T03:48:02.814Z [DEBUG] Path E:\tataanAI\claude-agent-kit\examples\claude-code-web already tracked for repo longduoduo112/claude-agent-kit
+2025-12-24T03:48:02.945Z [DEBUG] Getting matching hook commands for SubagentStart with query: Explore
+2025-12-24T03:48:02.945Z [DEBUG] Found 0 hook matchers in settings
+2025-12-24T03:48:02.945Z [DEBUG] Matched 0 unique hooks for query "Explore" (0 before deduplication)
+2025-12-24T03:48:02.945Z [DEBUG] Getting matching hook commands for SubagentStart with query: Plan
+2025-12-24T03:48:02.945Z [DEBUG] Found 0 hook matchers in settings
+2025-12-24T03:48:02.945Z [DEBUG] Matched 0 unique hooks for query "Plan" (0 before deduplication)
+2025-12-24T03:48:03.495Z [DEBUG] Shell snapshot created successfully (409 bytes)
+2025-12-24T03:48:04.529Z [ERROR] MCP server "workspace-filesystem" Server stderr: node:internal/modules/cjs/loader:1423
+  throw err;
+  ^
+
+Error: Cannot find module 'E:\tataanAI\claude-agent-kit\examples\claude-code-web\${PROJECT_ROOT}\node_modules\@modelcontextprotocol\server-filesystem\dist\index.js'
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1420:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1058:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1063:22)
+    at Module._load (node:internal/modules/cjs/loader:1226:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v25.1.0
+2025-12-24T03:48:05.810Z [DEBUG] Stream started - received first chunk
+2025-12-24T03:48:06.270Z [DEBUG] MCP server "workspace-filesystem": Connection failed after 3517ms: MCP error -32000: Connection closed
+2025-12-24T03:48:06.270Z [ERROR] MCP server "workspace-filesystem" Connection failed: MCP error -32000: Connection closed
+2025-12-24T03:48:06.282Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2025-12-24T03:48:06.298Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2025-12-24T03:48:06.298Z [DEBUG] Found 0 hook matchers in settings
+2025-12-24T03:48:06.298Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

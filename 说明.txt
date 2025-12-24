@@ -1,0 +1,17 @@
+export ANTHROPIC_API_KEY=79234bf89ea6649543f7a4e113eed4ef.KZy60VeJjSxrrvtF
+export ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic
+export ANTHROPIC_MODEL=glm-4.7
+
+export ANTHROPIC_BASE_URL=https://api.jianda.ai
+export ANTHROPIC_AUTH_TOKEN=sk-90obwc5NNqEgvHaqSinr82yO19QJezcD2ek3dzqIUfgnonUP
+export ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+
+
+安装
+npm install @anthropic-ai/claude-agent-sdk
+
+查看版本号
+npm list @anthropic-ai/claude-agent-sdk
+
+将 package.json 中的版本调整匹配，原始代码适配的是0.1.47版
+

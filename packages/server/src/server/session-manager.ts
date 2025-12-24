@@ -11,6 +11,7 @@ export class SessionManager {
 
   /** List of known sessions, including inactive ones. */
   private sessionsList: Session[] = [];
+  private clientSessions = new WeakMap<ISessionClient, Session>();
 
   get sessions(): Session[] {
     return this.sessionsList;
@@ -46,6 +47,10 @@ export class SessionManager {
     let session = client.sessionId ? this.getSession(client.sessionId) : undefined;
 
     if (!session) {
+      session = this.clientSessions.get(client);
+    }
+
+    if (!session) {
       session = this.sessionsList.find((existing) => existing.hasClient(client));
     }
 
@@ -54,6 +59,8 @@ export class SessionManager {
       // Update the client's sessionId to match the newly created session
       client.sessionId = session.sessionId || undefined;
     }
+
+    this.clientSessions.set(client, session);
     return session;
   }
 
@@ -61,14 +68,17 @@ export class SessionManager {
   subscribe(client: ISessionClient) {
     const session = this.getOrCreateSession(client);
     session.subscribe(client);
+    this.clientSessions.set(client, session);
   }
 
   unsubscribe(client: ISessionClient): void {
     const session = client.sessionId ? this.getSession(client.sessionId) : undefined;
     if (!session) {
+      this.clientSessions.delete(client);
       return;
     }
     session.unsubscribe(client);
+    this.clientSessions.delete(client);
   }
 
   sendMessage(
@@ -78,6 +88,7 @@ export class SessionManager {
   ): void {
     const session = this.getOrCreateSession(client);
     session.subscribe(client);
+    this.clientSessions.set(client, session);
     session.send(prompt, attachments);
   }
 
@@ -87,5 +98,6 @@ export class SessionManager {
   ): void {
     const session = this.getOrCreateSession(client);
     session.setSDKOptions(options);
+    this.clientSessions.set(client, session);
   }
 }

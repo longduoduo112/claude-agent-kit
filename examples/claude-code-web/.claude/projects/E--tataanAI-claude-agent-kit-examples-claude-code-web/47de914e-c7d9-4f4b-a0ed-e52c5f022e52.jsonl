@@ -1,0 +1,2 @@
+{"type":"queue-operation","operation":"enqueue","timestamp":"2025-12-23T15:56:06.975Z","content":[{"type":"text","text":"运行项目是 examples\\claude-code-web ，我已经把配置文件都改为了0.1.76版本，因为当前安装的是最新版本，你检查并重新安装测试一下"}],"sessionId":"47de914e-c7d9-4f4b-a0ed-e52c5f022e52"}
+{"type":"queue-operation","operation":"dequeue","timestamp":"2025-12-23T15:56:06.976Z","sessionId":"47de914e-c7d9-4f4b-a0ed-e52c5f022e52"}
