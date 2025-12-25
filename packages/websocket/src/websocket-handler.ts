@@ -132,18 +132,21 @@ export class WebSocketHandler {
     const requestedSessionId = typeof message.sessionId === "string" ? message.sessionId.trim() : null;
 
     if (!requestedSessionId) {
-      const previousSessionId = client.sessionId;
-      if (previousSessionId) {
-        const previousSession = this.sessionManager.getSession(previousSessionId);
-        previousSession?.unsubscribe(client);
-      }
-      client.sessionId = undefined;
+      // 客户端未指定 sessionId：通常表示“继续当前会话（未从 URL/状态指定）”。
+      // 但如果 client 当前已经绑定了一个旧 sessionId，则这是“开启新会话”的显式信号（New Session）。
+      // 关键点：开启新会话时必须清除 SessionManager 对该 client 的 WeakMap 绑定，
+      // 否则后续 sendMessage() 会复用旧 Session，导致 UI 跳回旧 sessionId。
+      const shouldStartNewSession = Boolean(client.sessionId) || message.newConversation === true;
+      if (shouldStartNewSession) {
+        this.sessionManager.unsubscribe(client);
+        client.sessionId = undefined;
 
-      // Ensure the new session inherits the default options (e.g. CWD)
-      try {
-        this.sessionManager.setSDKOptions(client, this.options);
-      } catch (error) {
-        console.error("Failed to apply default SDK options to new session:", error);
+        // Ensure the new session inherits the default options (e.g. CWD)
+        try {
+          this.sessionManager.setSDKOptions(client, this.options);
+        } catch (error) {
+          console.error("Failed to apply default SDK options to new session:", error);
+        }
       }
     }
 
