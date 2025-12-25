@@ -51,9 +51,22 @@ Environment variables:
 - `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_URL`, `ANTHROPIC_MODEL` (optional overrides for Claude-compatible endpoints)
 - `PORT` (default `5173`)
 - `WORKSPACE_DIR` (optional, defaults to `<project>/agent`; controls where skills/uploads are stored)
+- `WORKSPACES_DIR` (optional, defaults to `<project>/workspaces`; controls where “New Project” workspaces are created)
 - `CLAUDE_HOME`, `CLAUDE_AGENT_HOME` (optional, controls where Claude Code writes `.claude/`; if unset, this example defaults it to `WORKSPACE_DIR` to keep multi-turn resume stable)
 - `API_AUTH_TOKEN` (optional, protects `/api` with an API key; send `Authorization: Bearer <token>` or `x-api-key: <token>`)
 - `API_RATE_LIMIT_WINDOW_MS`, `API_RATE_LIMIT_MAX` (optional, express-rate-limit config; defaults 15m/300)
+
+## Windows 常见问题
+
+- **出现 `agent/agent` 目录嵌套**
+
+  旧版本会把 “New Project” 目录创建在 `WORKSPACE_DIR` 下（默认 `<project>/agent`），因此创建名为 `agent` 的项目会生成 `<project>/agent/agent`。
+  现在 “New Project” 默认创建在 `WORKSPACES_DIR`（默认 `<project>/workspaces`）；服务端也会禁止创建与根目录同名的项目目录（见 `/api/create-directory` 校验）。如果你已经有历史的 `agent/agent`，可以手动删除不用的那一层。
+
+- **`API Error: Connection error.` 后紧跟 `Claude Code process exited with code 1`**
+
+  这通常是上游 API/网络抖动导致：Claude Code 会先输出一个 `result(is_error=true)`，随后进程以非 0 退出，SDK 会在流结束时抛出 process exit error。
+  本示例已在“已收到错误 result”的情况下吞掉随后的 `code=1` 退出错误，避免被误判为崩溃；UI 仍会显示 `API Error: Connection error.` 便于你直接重试。
 
 ### Docker Compose workflow
 Prefer using an env file? A ready-to-go `docker-compose.yml` is included.

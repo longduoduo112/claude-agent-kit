@@ -22,8 +22,11 @@ export async function createServer(options: CreateServerOptions = {}) {
   const isProduction = process.env.NODE_ENV === 'production'
   const base = process.env.BASE ?? '/'
   const workspaceDir = process.env.WORKSPACE_DIR ?? path.resolve(root, 'agent')
+  const workspacesDir = process.env.WORKSPACES_DIR ?? path.resolve(root, 'workspaces')
   await fs.mkdir(workspaceDir, { recursive: true })
+  await fs.mkdir(workspacesDir, { recursive: true })
   process.env.WORKSPACE_DIR = workspaceDir
+  process.env.WORKSPACES_DIR = workspacesDir
   // 固定 Claude Code 的“主目录”（保存会话、debug、shell snapshot 等）。
   // 这能避免多进程/多轮对话时因 cwd 漂移而写入不同 `.claude` 根目录，进而导致 `--resume` 找不到会话、进程 code=1 退出。
   // 如需启用“每个项目目录各自维护 .claude”的行为，可在环境中显式设置 CLAUDE_HOME/CLAUDE_AGENT_HOME 覆盖这里的默认值。
@@ -53,13 +56,18 @@ export async function createServer(options: CreateServerOptions = {}) {
     projectRoot: root,
     env: {
       WORKSPACE_DIR: workspaceDir,
+      WORKSPACES_DIR: workspacesDir,
       PROJECT_ROOT: root,
     },
   })
 
   const baseOptions = {
     thinkingLevel: 'default_on',
-    cwd: workspaceDir,
+    // Windows 下某些启动方式可能导致子进程找不到 `node`（PATH 不完整），使用当前进程的 Node 路径可避免 `spawn node ENOENT`。
+    executable: process.execPath,
+    // 默认把 Claude 的工作目录设置为项目根目录（而不是 WORKSPACE_DIR）。
+    // WORKSPACE_DIR 仅用于存放 `.claude` 相关数据（skills/会话/调试等），避免出现相对路径写入导致的 `agent/agent` 嵌套问题。
+    cwd: root,
     // Avoid --dangerously-skip-permissions under root; default to plan mode
     permissionMode: 'plan',
     get systemPrompt() {
@@ -130,6 +138,7 @@ export async function createServer(options: CreateServerOptions = {}) {
     sdkClient,
     defaultSessionOptions: webSocketHandler.options,
     workspaceDir,
+    workspacesDir,
   })
 
   registerSkillUploadRoute(app, { workspaceDir })

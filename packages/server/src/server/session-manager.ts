@@ -56,8 +56,12 @@ export class SessionManager {
 
     if (!session) {
       session = this.createSession(client.sdkClient);
-      // Update the client's sessionId to match the newly created session
-      client.sessionId = session.sessionId || undefined;
+      // 如果客户端携带了 sessionId（例如刷新页面后继续会话），让新建的 Session 立即“绑定”该 id，
+      // 并异步加载历史记录，避免后续消息误创建新会话或丢失 --resume。
+      if (client.sessionId) {
+        session.sessionId = client.sessionId;
+        void session.resumeFrom(client.sessionId);
+      }
     }
 
     this.clientSessions.set(client, session);
@@ -99,5 +103,17 @@ export class SessionManager {
     const session = this.getOrCreateSession(client);
     session.setSDKOptions(options);
     this.clientSessions.set(client, session);
+  }
+
+  sendToolResult(
+    client: ISessionClient,
+    toolUseId: string,
+    content: string,
+    isError: boolean,
+  ): Promise<void> {
+    const session = this.getOrCreateSession(client);
+    session.subscribe(client);
+    this.clientSessions.set(client, session);
+    return session.sendToolResult(toolUseId, content, isError);
   }
 }

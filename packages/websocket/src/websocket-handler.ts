@@ -7,6 +7,7 @@ import {
   type ResumeSessionIncomingMessage,
   type SessionSDKOptions,
   type SetSDKOptionsIncomingMessage,
+  type ToolResultIncomingMessage,
 } from "@claude-agent-kit/server";
 import { WebSocketSessionClient } from "./websocket-session-client";
 
@@ -70,10 +71,13 @@ export class WebSocketHandler {
         await this.handleChatMessage(ws, message);
         break;
       case "setSDKOptions":
-        this.handleSetSDKOptions(ws, message);
+        await this.handleSetSDKOptions(ws, message);
         break;
       case "resume":
         await this.handleResumeMessage(ws, message);
+        break;
+      case "toolResult":
+        await this.handleToolResultMessage(ws, message);
         break;
       default:
         this.send(ws, {
@@ -87,12 +91,17 @@ export class WebSocketHandler {
   }
 
 
-  private handleSetSDKOptions(ws: WebSocket, message: SetSDKOptionsIncomingMessage): void {
+  private async handleSetSDKOptions(ws: WebSocket, message: SetSDKOptionsIncomingMessage): Promise<void> {
     const client = this.clients.get(ws);
     if (!client) {
       console.error("WebSocket client not registered");
       this.send(ws, { type: "error", error: "WebSocket client not registered" });
       return;
+    }
+
+    const requestedSessionId = typeof message.sessionId === "string" ? message.sessionId.trim() : null;
+    if (requestedSessionId) {
+      client.sessionId = requestedSessionId;
     }
 
     try {
@@ -138,7 +147,45 @@ export class WebSocketHandler {
       }
     }
 
+    if (requestedSessionId) {
+      client.sessionId = requestedSessionId;
+    }
+
     this.sessionManager.sendMessage(client, content, message.attachments);
+  }
+
+  private async handleToolResultMessage(ws: WebSocket, message: ToolResultIncomingMessage): Promise<void> {
+    const client = this.clients.get(ws);
+    if (!client) {
+      console.error("WebSocket client not registered");
+      this.send(ws, { type: "error", error: "WebSocket client not registered" });
+      return;
+    }
+
+    const requestedSessionId = typeof message.sessionId === "string" ? message.sessionId.trim() : null;
+    if (requestedSessionId) {
+      client.sessionId = requestedSessionId;
+    }
+
+    const toolUseId = typeof message.toolUseId === "string" ? message.toolUseId.trim() : "";
+    if (!toolUseId) {
+      this.send(ws, {
+        type: "error",
+        error: "toolUseId is required",
+        code: "invalid_tool_use_id",
+      });
+      return;
+    }
+
+    const content = typeof message.content === "string" ? message.content : "";
+    const isError = message.isError === true;
+
+    try {
+      await this.sessionManager.sendToolResult(client, toolUseId, content, isError);
+    } catch (error) {
+      console.error("Failed to send tool result:", error);
+      this.send(ws, { type: "error", error: "Failed to send tool result" });
+    }
   }
 
   private async handleResumeMessage(ws: WebSocket, message: ResumeSessionIncomingMessage): Promise<void> {

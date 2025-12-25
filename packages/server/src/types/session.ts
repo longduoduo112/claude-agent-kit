@@ -73,7 +73,7 @@ export type OutcomingMessage =
 
 
 interface BaseIncomingMessage {
-  type: "chat" | "setSDKOptions" | "resume";
+  type: "chat" | "setSDKOptions" | "resume" | "toolResult";
   sessionId?: string | null;
 }
 
@@ -94,7 +94,15 @@ export interface ResumeSessionIncomingMessage extends BaseIncomingMessage {
   sessionId: string;
 }
 
+export interface ToolResultIncomingMessage extends BaseIncomingMessage {
+  type: "toolResult";
+  toolUseId: string;
+  content: string;
+  isError?: boolean;
+}
+
 export type IncomingMessage =
   | ChatIncomingMessage
   | SetSDKOptionsIncomingMessage
-  | ResumeSessionIncomingMessage;
+  | ResumeSessionIncomingMessage
+  | ToolResultIncomingMessage;

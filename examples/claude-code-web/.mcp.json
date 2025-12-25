@@ -4,7 +4,9 @@
       "command": "node",
       "args": [
         "${PROJECT_ROOT}/node_modules/@modelcontextprotocol/server-filesystem/dist/index.js",
-        "${WORKSPACE_DIR}"
+        "${PROJECT_ROOT}",
+        "${WORKSPACE_DIR}",
+        "${WORKSPACES_DIR}"
       ]
     }
   },

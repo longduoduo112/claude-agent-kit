@@ -16,7 +16,7 @@ export async function collectProjects(workspaceDir?: string): Promise<ProjectInf
   // 1. Scan global projects root
   const globalRoot = getProjectsRoot(workspaceDir)
   if (globalRoot) {
-    const globalProjects = await scanProjectsDirectory(globalRoot)
+    const globalProjects = await scanProjectsDirectory(globalRoot, workspaceDir)
     for (const p of globalProjects) {
       if (!seenPaths.has(p.path)) {
         projects.push(p)
@@ -41,7 +41,7 @@ export async function collectProjects(workspaceDir?: string): Promise<ProjectInf
         try {
           const stats = await stat(claudeProjectsDir)
           if (stats.isDirectory()) {
-            const subProjects = await scanProjectsDirectory(claudeProjectsDir)
+            const subProjects = await scanProjectsDirectory(claudeProjectsDir, workspaceDir)
             for (const p of subProjects) {
               if (!seenPaths.has(p.path)) {
                 projects.push(p)
@@ -61,7 +61,47 @@ export async function collectProjects(workspaceDir?: string): Promise<ProjectInf
   return projects
 }
 
-async function scanProjectsDirectory(projectsRoot: string): Promise<ProjectInfo[]> {
+async function isExistingDirectory(candidate: string): Promise<boolean> {
+  try {
+    const stats = await stat(candidate)
+    return stats.isDirectory()
+  } catch {
+    return false
+  }
+}
+
+async function resolveExistingProjectCwd(cwd: string, workspaceDir?: string): Promise<string> {
+  if (await isExistingDirectory(cwd)) {
+    return cwd
+  }
+
+  const baseName = path.basename(cwd)
+  const candidates: string[] = []
+
+  const workspacesDir = process.env.WORKSPACES_DIR?.trim()
+  if (workspacesDir) {
+    candidates.push(path.resolve(workspacesDir, baseName))
+  }
+
+  const projectRoot = process.env.PROJECT_ROOT?.trim()
+  if (projectRoot) {
+    candidates.push(path.resolve(projectRoot, baseName))
+  }
+
+  if (workspaceDir) {
+    candidates.push(path.resolve(workspaceDir, '..', baseName))
+  }
+
+  for (const candidate of candidates) {
+    if (await isExistingDirectory(candidate)) {
+      return candidate
+    }
+  }
+
+  return cwd
+}
+
+async function scanProjectsDirectory(projectsRoot: string, workspaceDir?: string): Promise<ProjectInfo[]> {
   let rootEntries: Dirent[]
   try {
     rootEntries = await readdir(projectsRoot, { withFileTypes: true })
@@ -124,8 +164,9 @@ async function scanProjectsDirectory(projectsRoot: string): Promise<ProjectInfo[
       continue
     }
 
-    const name = path.basename(foundMetadata.cwd)
-    projects.push({ id: entry.name, name, path: foundMetadata.cwd })
+    const resolvedCwd = await resolveExistingProjectCwd(foundMetadata.cwd, workspaceDir)
+    const name = path.basename(resolvedCwd)
+    projects.push({ id: entry.name, name, path: resolvedCwd })
   }
 
   return projects

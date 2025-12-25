@@ -31,13 +31,14 @@ type RegisterApiRoutesOptions = {
   sdkClient?: IClaudeAgentSDKClient
   defaultSessionOptions?: SessionSDKOptions
   workspaceDir?: string
+  workspacesDir?: string
 }
 
 export function registerApiRoutes(
   app: Express,
   options: RegisterApiRoutesOptions = {},
 ) {
-  const { sdkClient, defaultSessionOptions, workspaceDir } = options
+  const { sdkClient, defaultSessionOptions, workspaceDir, workspacesDir } = options
   const hasAnthropicApiKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim())
 
   function buildFallbackCapabilities(message: string) {
@@ -176,6 +177,7 @@ export function registerApiRoutes(
   app.get('/api/system-info', (_req, res) => {
     res.json({
       workspaceDir,
+      workspacesDir,
       homeDir: os.homedir(),
       pathSeparator: path.sep,
     })
@@ -183,8 +185,9 @@ export function registerApiRoutes(
 
   app.post('/api/create-directory', async (req, res) => {
     const { name: projectName } = req.body
+    const workspacesRoot = workspacesDir ?? workspaceDir
 
-    if (!workspaceDir) {
+    if (!workspacesRoot) {
       res.status(500).json({ error: 'Workspace directory not configured' })
       return
     }
@@ -194,9 +197,24 @@ export function registerApiRoutes(
       return
     }
 
+    const trimmedProjectName = projectName.trim()
+    // 避免创建与 WORKSPACE_DIR 同名的子目录（例如 workspaceDir 本身叫 agent，用户再创建 agent 会变成 agent/agent）。
+    const reservedNames = new Set<string>([
+      path.basename(workspacesRoot).toLowerCase(),
+      ...(workspaceDir ? [path.basename(workspaceDir).toLowerCase()] : []),
+      '.claude',
+      '.git',
+    ])
+    if (reservedNames.has(trimmedProjectName.toLowerCase())) {
+      res.status(400).json({
+        error: `Invalid project name. '${trimmedProjectName}' is reserved.`,
+      })
+      return
+    }
+
     // Validate project name: alphanumeric, spaces, hyphens, underscores only
     const validNamePattern = /^[\w][\w\s-]*$/
-    if (!validNamePattern.test(projectName)) {
+    if (!validNamePattern.test(trimmedProjectName)) {
       res.status(400).json({
         error: 'Invalid project name. Use only letters, numbers, spaces, hyphens, and underscores.'
       })
@@ -204,17 +222,17 @@ export function registerApiRoutes(
     }
 
     // Prevent overly long names
-    if (projectName.length > 100) {
+    if (trimmedProjectName.length > 100) {
       res.status(400).json({ error: 'Project name too long (max 100 characters)' })
       return
     }
 
     try {
       // Construct full path server-side
-      const fullPath = path.join(workspaceDir, projectName)
+      const fullPath = path.join(workspacesRoot, trimmedProjectName)
 
       // Security: Verify the resolved path is still within workspaceDir
-      const resolvedWorkspace = path.resolve(workspaceDir)
+      const resolvedWorkspace = path.resolve(workspacesRoot)
       const resolvedProject = path.resolve(fullPath)
 
       if (!resolvedProject.startsWith(resolvedWorkspace + path.sep) &&
@@ -238,8 +256,9 @@ export function registerApiRoutes(
 
   app.delete('/api/projects/:name', async (req, res) => {
     const { name: projectName } = req.params
+    const workspacesRoot = workspacesDir ?? workspaceDir
 
-    if (!workspaceDir) {
+    if (!workspacesRoot) {
       res.status(500).json({ error: 'Workspace directory not configured' })
       return
     }
@@ -251,10 +270,10 @@ export function registerApiRoutes(
 
     try {
       // Construct full path
-      const fullPath = path.join(workspaceDir, projectName)
+      const fullPath = path.join(workspacesRoot, projectName)
 
       // Security: Verify the path is within workspaceDir
-      const resolvedWorkspace = path.resolve(workspaceDir)
+      const resolvedWorkspace = path.resolve(workspacesRoot)
       const resolvedProject = path.resolve(fullPath)
 
       if (!resolvedProject.startsWith(resolvedWorkspace + path.sep) &&

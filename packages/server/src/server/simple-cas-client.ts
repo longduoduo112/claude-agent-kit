@@ -85,7 +85,9 @@ export class SimpleClaudeAgentSDKClient implements IClaudeAgentSDKClient {
     }
 
     // Merge with existing options and add custom environment
-    const baseEnv = { ...(options?.env ?? process.env ?? {}) } as Record<
+    // 注意：如果直接使用 options.env（而不合并 process.env），可能会丢失 PATH 等关键变量，
+    // 在 Windows 上会导致 `spawn node ENOENT`（子进程找不到 node 可执行文件）。
+    const baseEnv = { ...(process.env ?? {}), ...(options?.env ?? {}) } as Record<
       string,
       string | undefined
     >;

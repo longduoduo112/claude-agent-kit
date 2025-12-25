@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 import {
   buildUserMessageContent,
@@ -55,6 +57,76 @@ function normalizeWorkspacePath(value?: string | null): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
+function isExistingDirectory(candidate: string): boolean {
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function ensureCwdAliasExists(expectedCwd: string, actualCwd: string): Promise<void> {
+  if (!expectedCwd || !actualCwd) {
+    return;
+  }
+
+  if (isExistingDirectory(expectedCwd)) {
+    return;
+  }
+
+  if (!isExistingDirectory(actualCwd)) {
+    return;
+  }
+
+  const parentDir = path.dirname(expectedCwd);
+  try {
+    fs.mkdirSync(parentDir, { recursive: true });
+  } catch {
+    // ignore
+  }
+
+  try {
+    // Windows 下用 junction 避免管理员权限；其他平台用 dir 类型即可。
+    const linkType: fs.symlink.Type | undefined =
+      process.platform === "win32" ? "junction" : "dir";
+    await fs.promises.symlink(actualCwd, expectedCwd, linkType);
+  } catch {
+    // ignore if cannot create (already exists, permissions, etc.)
+  }
+}
+
+function resolveExistingWorkspaceCwd(cwd: string): string {
+  if (isExistingDirectory(cwd)) {
+    return cwd;
+  }
+
+  const baseName = path.basename(cwd);
+  const candidates: string[] = [];
+
+  const workspacesDir = normalizeWorkspacePath(process.env.WORKSPACES_DIR ?? null);
+  if (workspacesDir) {
+    candidates.push(path.resolve(workspacesDir, baseName));
+  }
+
+  const projectRoot = normalizeWorkspacePath(process.env.PROJECT_ROOT ?? null);
+  if (projectRoot) {
+    candidates.push(path.resolve(projectRoot, baseName));
+  }
+
+  const workspaceDir = normalizeWorkspacePath(process.env.WORKSPACE_DIR ?? null);
+  if (workspaceDir) {
+    candidates.push(path.resolve(workspaceDir, "..", baseName));
+  }
+
+  for (const candidate of candidates) {
+    if (isExistingDirectory(candidate)) {
+      return candidate;
+    }
+  }
+
+  return cwd;
+}
+
 function createDefaultOptions(workspacePath?: string | null): SessionSDKOptions {
   const cwd = normalizeWorkspacePath(workspacePath);
   return {
@@ -70,6 +142,103 @@ function createDefaultOptions(workspacePath?: string | null): SessionSDKOptions 
     },
     ...(cwd ? { cwd } : {}),
   };
+}
+
+function extractToolUseBlocks(message: SDKMessage): Array<{ id: string; name: string }> {
+  if (!message || typeof message !== "object") {
+    return [];
+  }
+
+  if ((message as { type?: unknown }).type !== "assistant") {
+    return [];
+  }
+
+  const assistant = message as unknown as {
+    message?: { content?: Array<{ type?: unknown; id?: unknown; name?: unknown }> };
+  };
+
+  const content = Array.isArray(assistant.message?.content) ? assistant.message?.content : [];
+  const blocks: Array<{ id: string; name: string }> = [];
+
+  for (const block of content) {
+    if (!block || typeof block !== "object") {
+      continue;
+    }
+    if (block.type !== "tool_use") {
+      continue;
+    }
+    const id = typeof block.id === "string" ? block.id : "";
+    const name = typeof block.name === "string" ? block.name : "";
+    if (id && name) {
+      blocks.push({ id, name });
+    }
+  }
+
+  return blocks;
+}
+
+function messageHasToolResult(message: SDKMessage, toolUseId: string): { found: boolean; approved: boolean } {
+  if (!message || typeof message !== "object") {
+    return { found: false, approved: false };
+  }
+
+  if ((message as { type?: unknown }).type !== "user") {
+    return { found: false, approved: false };
+  }
+
+  const user = message as unknown as {
+    message?: { content?: Array<{ type?: unknown; tool_use_id?: unknown; is_error?: unknown }> };
+  };
+
+  const content = Array.isArray(user.message?.content) ? user.message?.content : [];
+  for (const block of content) {
+    if (!block || typeof block !== "object") {
+      continue;
+    }
+    if (block.type !== "tool_result") {
+      continue;
+    }
+    if (block.tool_use_id !== toolUseId) {
+      continue;
+    }
+    const isError = block.is_error === true;
+    return { found: true, approved: !isError };
+  }
+
+  return { found: false, approved: false };
+}
+
+function findLatestPendingExitPlanModeToolUseId(messages: SDKMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (!message) {
+      continue;
+    }
+
+    const toolUses = extractToolUseBlocks(message);
+    const exitTool = toolUses.find((tool) => tool.name === "ExitPlanMode");
+    if (!exitTool) {
+      continue;
+    }
+
+    // 检查在该 tool_use 之后是否已经有“成功”的 tool_result（用户已批准）。
+    for (let j = i + 1; j < messages.length; j += 1) {
+      const result = messageHasToolResult(messages[j]!, exitTool.id);
+      if (!result.found) {
+        continue;
+      }
+      if (result.approved) {
+        return null;
+      }
+      // 如果用户此前拒绝过（is_error=true），允许重新提交批准。
+      return exitTool.id;
+    }
+
+    // 还没有收到 tool_result，视为待确认。
+    return exitTool.id;
+  }
+
+  return null;
 }
 
 
@@ -91,6 +260,7 @@ export class Session {
   private busyState: boolean = false;
   private loadingState: boolean = false;
   private messageList: SDKMessage[] = [];
+  private lastResultMessage: SDKMessage | null = null;
   private isLoaded = false;
   private clients: Set<ISessionClient> = new Set();
   private pendingStateUpdate: SessionStateUpdate | null = null;
@@ -129,7 +299,10 @@ export class Session {
     options: Partial<SessionSDKOptions>,
   ): void {
     const hasExplicitCwd = Object.prototype.hasOwnProperty.call(options, "cwd");
-    const normalizedCwd = hasExplicitCwd ? normalizeWorkspacePath(options.cwd ?? undefined) : undefined;
+    let normalizedCwd = hasExplicitCwd ? normalizeWorkspacePath(options.cwd ?? undefined) : undefined;
+    if (normalizedCwd) {
+      normalizedCwd = resolveExistingWorkspaceCwd(normalizedCwd);
+    }
 
     const normalized: Partial<SessionSDKOptions> = {
       ...options,
@@ -206,6 +379,41 @@ export class Session {
   interrupt(): void {
     this.abortController?.abort();
     this.setBusyState(false);
+  }
+
+  /**
+   * 发送 tool_result 给 Claude Code（用于 ExitPlanMode / AskUserQuestion 等需要用户确认的工具）。
+   * 注意：这会像普通消息一样触发一次新的 queryStream。
+   */
+  async sendToolResult(toolUseId: string, content: string, isError: boolean): Promise<void> {
+    if (this.queryPromise) {
+      await this.queryPromise;
+    }
+
+    const trimmedId = typeof toolUseId === "string" ? toolUseId.trim() : "";
+    if (!trimmedId) {
+      throw new Error("toolUseId is required");
+    }
+
+    const userMessage: SDKUserMessage = {
+      type: "user",
+      uuid: randomUUID(),
+      session_id: "",
+      parent_tool_use_id: null,
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: trimmedId,
+            content,
+            is_error: isError,
+          },
+        ],
+      },
+    };
+
+    await this.startQueryWithUserMessage(userMessage);
   }
 
 
@@ -327,6 +535,83 @@ export class Session {
     console.log(`[Session] resumeFrom finished loading ${sessionId}`);
   }
 
+  private async startQueryWithUserMessage(userMessage: SDKUserMessage, summaryText?: string): Promise<void> {
+    this.abortController = new AbortController();
+
+    async function* generateMessages() {
+      yield userMessage;
+    }
+
+    this.addNewMessage(userMessage);
+
+    // Seed the session summary with the user's first prompt if needed.
+    if (!this.summary && summaryText) {
+      this.summary = summaryText;
+    }
+
+    this.lastModifiedTime = Date.now();
+    this.setBusyState(true);
+
+    this.lastResultMessage = null;
+    this.queryPromise = (async () => {
+      try {
+        const { thinkingLevel: _thinkingLevel, ...effectiveOptions } = this.buildEffectiveOptions();
+        const options: SDKOptions = {
+          ...effectiveOptions,
+          abortController: this.abortController,
+        };
+
+        // Use resume for multi-turn, continue for first message
+        if (this.sessionId) {
+          options.resume = this.sessionId;
+
+          // Claude Code 的 session 持久化是“按项目（cwd）分桶”的：如果 cwd 变了，即便 sessionId 一样也可能找不到会话。
+          // 对于已存在会话，优先使用 transcript 中记录的 cwd，并在 cwd 已迁移时自动创建一个目录别名（junction/symlink），
+          // 避免出现 “No conversation found with session ID ...” 进而 code=1 退出。
+          const transcriptCwdRaw = this.findWorkspacePathFromMessages(this.messageList);
+          const transcriptCwd = normalizeWorkspacePath(transcriptCwdRaw);
+          if (transcriptCwd) {
+            const resolved = resolveExistingWorkspaceCwd(transcriptCwd);
+            if (resolved !== transcriptCwd) {
+              await ensureCwdAliasExists(transcriptCwd, resolved);
+            }
+
+            if (isExistingDirectory(transcriptCwd)) {
+              options.cwd = transcriptCwd;
+              if (this.options.cwd !== transcriptCwd) {
+                this.options = {
+                  ...this.options,
+                  cwd: transcriptCwd,
+                };
+              }
+            }
+          }
+        }
+
+        for await (const message of this.sdkClient.queryStream(
+          generateMessages(),
+          options
+        )) {
+          console.log(message);
+          this.processIncomingMessage(message);
+        }
+      } catch (error) {
+        if (shouldSuppressExitErrorAfterResult(error, this.lastResultMessage)) {
+          // 不额外标记 session error；UI 里已经有 result message（包含错误原因）
+        } else {
+          console.error(`Error in session ${this.sessionId}:`, enrichSdkErrorForLogs(error));
+          this.error = error instanceof Error ? error : String(error);
+        }
+      } finally {
+        this.queryPromise = null;
+        this.setBusyState(false);
+      }
+    })();
+
+    await this.queryPromise;
+    this.lastModifiedTime = Date.now();
+  }
+
   // Process a single user message
   async send(
     prompt: string,
@@ -335,6 +620,22 @@ export class Session {
     if (this.queryPromise) {
       // Queue is busy, wait for it
       await this.queryPromise;
+    }
+
+    // 在计划模式下，用户常用“执行/运行”等自然语言来表示批准方案；如果检测到待确认的 ExitPlanMode，
+    // 则将该输入转换为 tool_result（避免 Claude Code 挂起或退出）。
+    const normalizedPrompt = prompt.trim();
+    if (
+      normalizedPrompt === "执行" ||
+      normalizedPrompt === "运行" ||
+      normalizedPrompt.toLowerCase() === "execute" ||
+      normalizedPrompt.toLowerCase() === "run"
+    ) {
+      const pendingExitId = findLatestPendingExitPlanModeToolUseId(this.messageList);
+      if (pendingExitId) {
+        await this.sendToolResult(pendingExitId, "User approved the plan", false);
+        return;
+      }
     }
 
     // Build the synthetic user message that will kick off the stream.
@@ -348,54 +649,8 @@ export class Session {
         content: buildUserMessageContent(prompt, attachments),
       },
     };
-    this.abortController = new AbortController();
 
-    async function* generateMessages() {
-      yield userMessage;
-    }
-
-    this.addNewMessage(userMessage);
-
-    // Seed the session summary with the user's first prompt if needed.
-    if (!this.summary) {
-      this.summary = prompt;
-    }
-
-    this.lastModifiedTime = Date.now();
-    this.setBusyState(true);
-
-    this.queryPromise = (async () => {
-      try {
-        const { thinkingLevel: _thinkingLevel, ...effectiveOptions } = this.buildEffectiveOptions();
-        const options: SDKOptions = {
-          ...effectiveOptions,
-          abortController: this.abortController,
-        };
-
-        // Use resume for multi-turn, continue for first message
-        if (this.sessionId) {
-          options.resume = this.sessionId;
-        }
-
-
-        for await (const message of this.sdkClient.queryStream(
-          generateMessages(),
-          options
-        )) {
-          console.log(message);
-          this.processIncomingMessage(message);
-        }
-      } catch (error) {
-        console.error(`Error in session ${this.sessionId}:`, enrichSdkErrorForLogs(error));
-        this.error = error instanceof Error ? error : String(error);
-      } finally {
-        this.queryPromise = null;
-        this.setBusyState(false);
-      }
-    })();
-
-    await this.queryPromise;
-    this.lastModifiedTime = Date.now();
+    await this.startQueryWithUserMessage(userMessage, normalizedPrompt);
   }
 
 
@@ -404,6 +659,10 @@ export class Session {
 
     if (message.session_id) {
       this.updateSessionId(message.session_id);
+    }
+
+    if (message.type === "result") {
+      this.lastResultMessage = message;
     }
 
     this.addNewMessage(message);
@@ -485,6 +744,33 @@ function extractTimestamp(value: unknown): number | null {
 }
 
 function enrichSdkErrorForLogs(error: unknown): unknown {
+  if (error instanceof Error) {
+    const record = error as unknown as Record<string, unknown>;
+    const stderrRaw = record.stderr;
+    const stdoutRaw = record.stdout;
+
+    const stderr = truncateText(asText(stderrRaw), 4000);
+    const stdout = truncateText(asText(stdoutRaw), 2000);
+
+    const enriched: Record<string, unknown> = {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+
+    const cause = (error as unknown as { cause?: unknown }).cause;
+    if (cause) {
+      enriched.cause = enrichSdkErrorForLogs(cause);
+    }
+
+    return {
+      ...record,
+      ...enriched,
+      ...(stderr ? { stderr } : {}),
+      ...(stdout ? { stdout } : {}),
+    };
+  }
+
   if (!error || typeof error !== "object") {
     return error;
   }
@@ -532,4 +818,19 @@ function truncateText(value: string | null, maxChars: number): string | null {
     return text;
   }
   return `${text.slice(0, maxChars)}\n…(truncated)`;
+}
+
+function shouldSuppressExitErrorAfterResult(error: unknown, lastResult: SDKMessage | null): boolean {
+  if (!lastResult || lastResult.type !== "result") {
+    return false;
+  }
+
+  const record = lastResult as { is_error?: unknown };
+  const isErrorResult = record.is_error === true;
+  if (!isErrorResult) {
+    return false;
+  }
+
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("Claude Code process exited with code 1");
 }
