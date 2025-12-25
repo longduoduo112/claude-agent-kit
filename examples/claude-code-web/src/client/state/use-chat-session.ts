@@ -10,6 +10,7 @@ import type {
 import type { PermissionMode, ThinkingLevel } from '@/types/session'
 
 import { sortMessages } from '@/lib/chat-message-utils'
+import { parseRoute } from '@/lib/route'
 
 import {
   chatMessagesAtom,
@@ -36,6 +37,27 @@ export function useOutcomingMessageHandler() {
 
   return useCallback(
     (payload: OutcomingMessage) => {
+      // 以 URL（路由）为准确定义“当前会话”，避免旧会话的推送把 sessionId 回写掉，
+      // 造成 URL 在旧/新会话之间来回跳转（页面闪烁）。
+      const expectedSessionId = (() => {
+        if (typeof window === 'undefined') {
+          return currentSessionId
+        }
+        const { sessionId } = parseRoute(window.location.pathname)
+        return sessionId ?? currentSessionId
+      })()
+
+      if (expectedSessionId !== null) {
+        if (!payload.sessionId || payload.sessionId !== expectedSessionId) {
+          console.log('[useOutcomingMessageHandler] ignore non-active session message', {
+            activeSessionId: expectedSessionId,
+            incomingSessionId: payload.sessionId ?? null,
+            type: payload.type,
+          })
+          return
+        }
+      }
+
       // More informative logging
       if (payload.type === 'session_state_changed') {
         const stateInfo: Record<string, unknown> = { sessionId: payload.sessionId }
