@@ -27,6 +27,8 @@ export type LeftSidebarProps = {
   onSessionSelect?: (payload: SessionSelectPayload) => void
   onProjectChange?: (project: Project | null) => void
   onNewSession?: (projectId: string) => void
+  onStartConsultation?: (project: Project) => void
+  pendingConsultation?: { preset: 'consultative-selling'; projectId: string } | null
   onCreateProject?: (path: string) => void
   onDeleteProject?: (projectId: string, projectName: string) => void
   capabilities?: CapabilitySnapshot | null

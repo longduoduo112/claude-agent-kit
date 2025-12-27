@@ -3,6 +3,8 @@ import type { Dirent } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+import { locateSessionFile, normalizeSessionId } from '@claude-agent-kit/server'
+
 export interface ProjectInfo {
   id: string
   name: string
@@ -176,22 +178,24 @@ export async function deleteProjectSession(
   projectId: string,
   sessionId: string,
 ): Promise<'deleted' | 'not_found'> {
-  // Note: This currently only supports deleting sessions from the global projects root
-  // TODO: Support deleting sessions from sub-workspaces if needed
   const projectsRoot = getProjectsRoot()
   if (!projectsRoot) {
     return 'not_found'
   }
 
-  const projectDir = resolveProjectDir(projectsRoot, projectId)
-  if (!projectDir) {
-    return 'not_found'
+  // D1：固定 cwd 桶后，session 可能分布在多个 projects/<bucket> 目录中。
+  // 删除时按 sessionId 全局定位文件，忽略 projectId（后续项目维度会移除）。
+  if (projectId) {
+    console.warn(
+      `[api] Ignoring projectId='${projectId}' for delete: locating session file by sessionId across all buckets.`,
+    )
   }
 
-  const normalizedSessionId = sessionId.toLowerCase().endsWith('.jsonl')
-    ? sessionId
-    : `${sessionId}.jsonl`
-  const sessionPath = path.join(projectDir, normalizedSessionId)
+  const normalized = normalizeSessionId(sessionId)
+  const sessionPath = await locateSessionFile({ projectsRoot, sessionId: normalized })
+  if (!sessionPath) {
+    return 'not_found'
+  }
 
   try {
     await unlink(sessionPath)

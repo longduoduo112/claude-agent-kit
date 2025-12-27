@@ -5,6 +5,7 @@ import {
   type IClaudeAgentSDKClient,
   type IncomingMessage,
   type ResumeSessionIncomingMessage,
+  type StartConsultationIncomingMessage,
   type SessionSDKOptions,
   type SetSDKOptionsIncomingMessage,
   type ToolResultIncomingMessage,
@@ -14,6 +15,7 @@ import { WebSocketSessionClient } from "./websocket-session-client";
 export class WebSocketHandler {
   private clients: Map<WebSocket, WebSocketSessionClient> = new Map();
   private sessionManager = new SessionManager();
+  private warnedCwdOverrides = new WeakSet<WebSocket>();
 
   sdkClient: IClaudeAgentSDKClient;
   options: SessionSDKOptions;
@@ -79,6 +81,9 @@ export class WebSocketHandler {
       case "toolResult":
         await this.handleToolResultMessage(ws, message);
         break;
+      case "startConsultation":
+        await this.handleStartConsultation(ws, message);
+        break;
       default:
         this.send(ws, {
           type: "error",
@@ -105,7 +110,20 @@ export class WebSocketHandler {
     }
 
     try {
-      this.sessionManager.setSDKOptions(client, message.options);
+      const requestedCwd = (message.options as { cwd?: unknown } | undefined)?.cwd;
+      if (requestedCwd !== undefined) {
+        if (!this.warnedCwdOverrides.has(ws)) {
+          this.warnedCwdOverrides.add(ws);
+          console.warn(
+            `[WebSocketHandler] Ignored client setSDKOptions.cwd=${String(requestedCwd)}; server uses a fixed PROJECT_ROOT cwd bucket to avoid resume failures from split storage.`,
+          );
+        }
+      }
+
+      const sanitizedOptions = { ...message.options } as Record<string, unknown>;
+      delete sanitizedOptions.cwd;
+
+      this.sessionManager.setSDKOptions(client, sanitizedOptions as Partial<SessionSDKOptions>);
     } catch (error) {
       console.error("Failed to set SDK options:", error);
       this.send(ws, { type: "error", error: "Failed to set SDK options" });
@@ -212,9 +230,9 @@ export class WebSocketHandler {
 
     const previousSessionId = client.sessionId;
     if (previousSessionId && previousSessionId !== targetSessionId) {
-      const previousSession = this.sessionManager.getSession(previousSessionId);
-      previousSession?.unsubscribe(client);
-      console.log(`[WebSocketHandler] Unsubscribed client from previous session ${previousSessionId}`);
+      // 关键：必须通过 SessionManager 解绑，确保清理 WeakMap(client->session)，避免跨会话复用旧 Session 导致 options/MCP 配置串话。
+      this.sessionManager.unsubscribe(client);
+      console.log(`[WebSocketHandler] Unsubscribed client from previous session ${previousSessionId} (cleared bindings)`);
     }
 
     client.sessionId = targetSessionId;
@@ -246,6 +264,79 @@ export class WebSocketHandler {
         type: "error",
         error: "Failed to resume session",
         code: "resume_failed",
+      });
+    }
+  }
+
+  private buildConsultationOptions(
+    base: SessionSDKOptions,
+  ): SessionSDKOptions {
+    return {
+      ...base,
+      // 咨询入口明确跳过 Plan Mode
+      permissionMode: "default",
+    };
+  }
+
+  private async handleStartConsultation(
+    ws: WebSocket,
+    message: StartConsultationIncomingMessage,
+  ): Promise<void> {
+    const client = this.clients.get(ws);
+    if (!client) {
+      console.error("WebSocket client not registered");
+      this.send(ws, { type: "error", error: "WebSocket client not registered" });
+      return;
+    }
+
+    const preset = typeof message.preset === "string" ? message.preset.trim() : "";
+    if (preset !== "consultative-selling") {
+      this.send(ws, {
+        type: "error",
+        error: `Unsupported consultation preset: ${preset || "(empty)"}`,
+        code: "unsupported_consultation_preset",
+      });
+      return;
+    }
+
+    // 强制开启新会话：解绑旧会话，清除 client/session 绑定
+    try {
+      this.sessionManager.unsubscribe(client);
+    } catch {
+      // ignore
+    }
+    client.sessionId = undefined;
+
+    // 为“新会话”设置咨询预设选项，并直接触发 skill 启动
+    try {
+      const requestedCwd = typeof message.cwd === "string" ? message.cwd.trim() : "";
+      if (requestedCwd) {
+        if (!this.warnedCwdOverrides.has(ws)) {
+          this.warnedCwdOverrides.add(ws);
+          console.warn(
+            `[WebSocketHandler] Ignored startConsultation.cwd=${requestedCwd}; server uses a fixed PROJECT_ROOT cwd bucket.`,
+          );
+        }
+      }
+
+      const consultationOptions = this.buildConsultationOptions(this.options);
+      this.sessionManager.setSDKOptions(client, consultationOptions);
+      this.sessionManager.sendMessage(
+        client,
+        [
+          "[consultation:preset=consultative-selling]",
+          "我想咨询皮肤问题。",
+          "",
+          "请直接使用 consultative-selling skill 开始咨询服务",          
+        ].join("\n"),
+        undefined,
+      );
+    } catch (error) {
+      console.error("Failed to start consultation:", error);
+      this.send(ws, {
+        type: "error",
+        error: "Failed to start consultation",
+        code: "start_consultation_failed",
       });
     }
   }

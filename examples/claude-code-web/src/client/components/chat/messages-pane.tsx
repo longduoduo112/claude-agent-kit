@@ -6,14 +6,20 @@ import type { ClaudeMessageContext } from '../messages/types'
 import { EmptyState } from '../messages/empty-state'
 import { Message } from '../messages/message'
 import { ThinkingIndicator } from './thinking-indicator'
+import { detectConsultationPreset, filterMessagesForConsultation } from '@/lib/consultation'
 
 type MessagesPaneProps = {
   messages: ChatMessage[]
   isStreaming: boolean
+  onSendToolResult?: (toolUseId: string, content: string, isError?: boolean) => void
 }
 
-export function MessagesPane({ messages, isStreaming }: MessagesPaneProps) {
+export function MessagesPane({ messages, isStreaming, onSendToolResult }: MessagesPaneProps) {
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null)
+  const filteredMessages = useMemo(() => {
+    const preset = detectConsultationPreset(messages)
+    return preset ? filterMessagesForConsultation(messages, preset) : messages
+  }, [messages])
   const context = useMemo<ClaudeMessageContext>(() => {
     const open = (filePath: string, range?: { startLine?: number; endLine?: number }) => {
       console.info('Requested open file', { filePath, range })
@@ -50,25 +56,32 @@ export function MessagesPane({ messages, isStreaming }: MessagesPaneProps) {
 
     return {
       fileOpener: { open, openContent },
+      ...(onSendToolResult
+        ? {
+            toolActions: {
+              sendToolResult: onSendToolResult,
+            },
+          }
+        : {}),
     }
-  }, [])
+  }, [onSendToolResult])
 
   useEffect(() => {
     scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isStreaming])
+  }, [filteredMessages, isStreaming])
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 overflow-x-hidden flex-col relative">
       <div className="flex flex-col gap-0">
-        {messages.length === 0 ? (
+        {filteredMessages.length === 0 ? (
           <EmptyState context={context} />
         ) : (
-          messages.map((message, index) => (
+          filteredMessages.map((message, index) => (
             <Message
               key={message.id}
               message={message}
               context={context}
-              isHighlighted={isStreaming && index === messages.length - 1}
+              isHighlighted={isStreaming && index === filteredMessages.length - 1}
             />
           ))
         )}

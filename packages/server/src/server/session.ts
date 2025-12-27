@@ -23,6 +23,11 @@ import type {
   SDKUserMessage,
   Options as SDKOptions,
 } from "@anthropic-ai/claude-agent-sdk";
+import {
+  getProjectsRoot as getClaudeProjectsRoot,
+  locateSessionFile,
+  normalizeSessionId,
+} from "../utils/session-files";
 
 const DEFAULT_ALLOWED_TOOLS: readonly string[] = [
   "Task",
@@ -31,6 +36,7 @@ const DEFAULT_ALLOWED_TOOLS: readonly string[] = [
   "Grep",
   "LS",
   "ExitPlanMode",
+  "AskUserQuestion",
   "Read",
   "Edit",
   "MultiEdit",
@@ -127,6 +133,81 @@ function resolveExistingWorkspaceCwd(cwd: string): string {
   return cwd;
 }
 
+function encodeClaudeProjectIdFromCwd(cwd: string): string {
+  const resolved = path.resolve(cwd);
+  // Claude Code 通常按 cwd 的字符替换来生成 projects/<projectId> 目录名：
+  // 例如 Windows 下 E:\foo\bar -> E--foo-bar
+  return resolved.replace(/:/g, "-").replace(/[\\/]/g, "-");
+}
+
+async function ensureSessionAliasedIntoCanonicalBucket(sessionId: string, canonicalCwd: string): Promise<void> {
+  const trimmed = typeof sessionId === "string" ? sessionId.trim() : "";
+  if (!trimmed) {
+    return;
+  }
+
+  const projectsRoot = getClaudeProjectsRoot();
+  if (!projectsRoot) {
+    return;
+  }
+
+  const normalizedId = normalizeSessionId(trimmed);
+  const canonicalProjectId = encodeClaudeProjectIdFromCwd(canonicalCwd);
+  const canonicalProjectDir = path.join(projectsRoot, canonicalProjectId);
+  const canonicalSessionPath = path.join(canonicalProjectDir, `${normalizedId}.jsonl`);
+
+  try {
+    await fs.promises.access(canonicalSessionPath);
+    return;
+  } catch {
+    // continue
+  }
+
+  let sourcePath: string | null = null;
+  try {
+    sourcePath = await locateSessionFile({
+      projectsRoot,
+      sessionId: normalizedId,
+    });
+  } catch {
+    return;
+  }
+
+  if (!sourcePath) {
+    return;
+  }
+
+  if (path.resolve(sourcePath) === path.resolve(canonicalSessionPath)) {
+    return;
+  }
+
+  try {
+    await fs.promises.mkdir(canonicalProjectDir, { recursive: true });
+  } catch {
+    // ignore
+  }
+
+  try {
+    // Windows 下 symlink 可能需要管理员权限；优先 hardlink（同盘更稳定），失败再 copy。
+    await fs.promises.link(sourcePath, canonicalSessionPath);
+    console.log(
+      `[Session] Linked session ${normalizedId} into canonical bucket (${canonicalProjectId}) for resume compatibility`,
+    );
+    return;
+  } catch {
+    // ignore and fallback
+  }
+
+  try {
+    await fs.promises.copyFile(sourcePath, canonicalSessionPath);
+    console.log(
+      `[Session] Copied session ${normalizedId} into canonical bucket (${canonicalProjectId}) for resume compatibility`,
+    );
+  } catch {
+    // ignore
+  }
+}
+
 function createDefaultOptions(workspacePath?: string | null): SessionSDKOptions {
   const cwd = normalizeWorkspacePath(workspacePath);
   return {
@@ -177,17 +258,30 @@ function extractToolUseBlocks(message: SDKMessage): Array<{ id: string; name: st
   return blocks;
 }
 
-function messageHasToolResult(message: SDKMessage, toolUseId: string): { found: boolean; approved: boolean } {
+type ToolResultScan = {
+  found: boolean;
+  isError: boolean;
+  content: string | null;
+};
+
+function scanToolResult(message: SDKMessage, toolUseId: string): ToolResultScan {
   if (!message || typeof message !== "object") {
-    return { found: false, approved: false };
+    return { found: false, isError: false, content: null };
   }
 
   if ((message as { type?: unknown }).type !== "user") {
-    return { found: false, approved: false };
+    return { found: false, isError: false, content: null };
   }
 
   const user = message as unknown as {
-    message?: { content?: Array<{ type?: unknown; tool_use_id?: unknown; is_error?: unknown }> };
+    message?: {
+      content?: Array<{
+        type?: unknown;
+        tool_use_id?: unknown;
+        is_error?: unknown;
+        content?: unknown;
+      }>;
+    };
   };
 
   const content = Array.isArray(user.message?.content) ? user.message?.content : [];
@@ -202,10 +296,12 @@ function messageHasToolResult(message: SDKMessage, toolUseId: string): { found: 
       continue;
     }
     const isError = block.is_error === true;
-    return { found: true, approved: !isError };
+    const rawContent = block.content;
+    const contentText = typeof rawContent === "string" ? rawContent : null;
+    return { found: true, isError, content: contentText };
   }
 
-  return { found: false, approved: false };
+  return { found: false, isError: false, content: null };
 }
 
 function findLatestPendingExitPlanModeToolUseId(messages: SDKMessage[]): string | null {
@@ -222,20 +318,76 @@ function findLatestPendingExitPlanModeToolUseId(messages: SDKMessage[]): string 
     }
 
     // 检查在该 tool_use 之后是否已经有“成功”的 tool_result（用户已批准）。
+    let sawAnyResult = false;
+    let sawOnlyErrors = false;
     for (let j = i + 1; j < messages.length; j += 1) {
-      const result = messageHasToolResult(messages[j]!, exitTool.id);
+      const result = scanToolResult(messages[j]!, exitTool.id);
       if (!result.found) {
         continue;
       }
-      if (result.approved) {
+      sawAnyResult = true;
+      if (!result.isError) {
         return null;
       }
-      // 如果用户此前拒绝过（is_error=true），允许重新提交批准。
-      return exitTool.id;
+      sawOnlyErrors = true;
     }
 
     // 还没有收到 tool_result，视为待确认。
-    return exitTool.id;
+    if (!sawAnyResult) {
+      return exitTool.id;
+    }
+
+    // 如果用户此前拒绝过（is_error=true），允许重新提交批准。
+    return sawOnlyErrors ? exitTool.id : null;
+  }
+
+  return null;
+}
+
+function findLatestPendingAskUserQuestionToolUseId(messages: SDKMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (!message) {
+      continue;
+    }
+
+    const toolUses = extractToolUseBlocks(message);
+    const askTool = toolUses.find((tool) => tool.name === "AskUserQuestion");
+    if (!askTool) {
+      continue;
+    }
+
+    let sawAnyResult = false;
+    let shouldTreatAsPending = false;
+    for (let j = i + 1; j < messages.length; j += 1) {
+      const result = scanToolResult(messages[j]!, askTool.id);
+      if (!result.found) {
+        continue;
+      }
+      sawAnyResult = true;
+
+      // AskUserQuestion 的 tool_result 分两类：
+      // 1) 真正的用户回答（is_error=false）：已完成
+      // 2) 非交互环境下 Claude Code 生成的占位错误（如 "Answer questions?"）：仍需前端补充回答
+      if (!result.isError) {
+        return null;
+      }
+
+      const normalized = (result.content ?? "").trim();
+      if (normalized === "User declined to answer") {
+        return null;
+      }
+      if (normalized.includes("InputValidationError")) {
+        return null;
+      }
+      // 默认把 is_error=true 视为“仍需用户回答”，允许重新提交。
+      shouldTreatAsPending = true;
+    }
+
+    if (!sawAnyResult) {
+      return askTool.id;
+    }
+    return shouldTreatAsPending ? askTool.id : null;
   }
 
   return null;
@@ -342,13 +494,6 @@ export class Session {
 
   private setMessages(messages: SDKMessage[]): void {
     this.messageList = messages;
-
-    if (!this.options.cwd) {
-      const detectedWorkspace = this.findWorkspacePathFromMessages(messages);
-      if (detectedWorkspace) {
-        this.setSDKOptions({ cwd: detectedWorkspace });
-      }
-    }
 
     console.log(
       `[Session] setMessages for ${this.sessionId ?? "pending"} count=${messages.length} (wasLoaded=${this.isLoaded})`,
@@ -569,22 +714,11 @@ export class Session {
           // 对于已存在会话，优先使用 transcript 中记录的 cwd，并在 cwd 已迁移时自动创建一个目录别名（junction/symlink），
           // 避免出现 “No conversation found with session ID ...” 进而 code=1 退出。
           const transcriptCwdRaw = this.findWorkspacePathFromMessages(this.messageList);
-          const transcriptCwd = normalizeWorkspacePath(transcriptCwdRaw);
-          if (transcriptCwd) {
-            const resolved = resolveExistingWorkspaceCwd(transcriptCwd);
-            if (resolved !== transcriptCwd) {
-              await ensureCwdAliasExists(transcriptCwd, resolved);
-            }
-
-            if (isExistingDirectory(transcriptCwd)) {
-              options.cwd = transcriptCwd;
-              if (this.options.cwd !== transcriptCwd) {
-                this.options = {
-                  ...this.options,
-                  cwd: transcriptCwd,
-                };
-              }
-            }
+          void transcriptCwdRaw;
+          const canonicalCwd =
+            normalizeWorkspacePath(process.env.PROJECT_ROOT ?? null) ?? this.options.cwd;
+          if (canonicalCwd) {
+            await ensureSessionAliasedIntoCanonicalBucket(this.sessionId, canonicalCwd);
           }
         }
 
@@ -622,20 +756,53 @@ export class Session {
       await this.queryPromise;
     }
 
-    // 在计划模式下，用户常用“执行/运行”等自然语言来表示批准方案；如果检测到待确认的 ExitPlanMode，
-    // 则将该输入转换为 tool_result（避免 Claude Code 挂起或退出）。
+    // Plan 模式的交互工具（ExitPlanMode / AskUserQuestion）。
+    // 标准交互：前端展示“批准/拒绝/回答问题”控件，通过 tool_result 回传。
+    // 兜底：仍支持用户输入“执行/运行/拒绝”等自然语言。
     const normalizedPrompt = prompt.trim();
-    if (
-      normalizedPrompt === "执行" ||
-      normalizedPrompt === "运行" ||
-      normalizedPrompt.toLowerCase() === "execute" ||
-      normalizedPrompt.toLowerCase() === "run"
-    ) {
-      const pendingExitId = findLatestPendingExitPlanModeToolUseId(this.messageList);
-      if (pendingExitId) {
+
+    const pendingExitId = findLatestPendingExitPlanModeToolUseId(this.messageList);
+    if (pendingExitId) {
+      const lowered = normalizedPrompt.toLowerCase();
+      const approve =
+        normalizedPrompt === "执行" ||
+        normalizedPrompt === "运行" ||
+        lowered === "execute" ||
+        lowered === "run" ||
+        lowered === "approve" ||
+        lowered === "yes";
+      const reject =
+        normalizedPrompt === "拒绝" ||
+        lowered === "reject" ||
+        lowered === "no" ||
+        lowered === "cancel";
+
+      if (approve) {
         await this.sendToolResult(pendingExitId, "User approved the plan", false);
         return;
       }
+
+      if (reject) {
+        await this.sendToolResult(pendingExitId, "User rejected the plan", true);
+        return;
+      }
+    }
+
+    const pendingAskId = findLatestPendingAskUserQuestionToolUseId(this.messageList);
+    if (pendingAskId) {
+      const lowered = normalizedPrompt.toLowerCase();
+      const reject =
+        normalizedPrompt === "拒绝" ||
+        lowered === "reject" ||
+        lowered === "cancel";
+
+      if (reject) {
+        await this.sendToolResult(pendingAskId, "User declined to answer", true);
+        return;
+      }
+
+      await this.sendToolResult(pendingAskId, normalizedPrompt || " ", false);
+      return;
     }
 
     // Build the synthetic user message that will kick off the stream.

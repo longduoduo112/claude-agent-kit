@@ -1,10 +1,13 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import path from 'node:path'
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 
-import { parseSessionMessagesFromJsonl } from '@claude-agent-kit/server'
+import {
+  locateSessionFile,
+  parseSessionMessagesFromJsonl,
+} from '@claude-agent-kit/server'
 
 import { getProjectsRoot } from './projects'
 
@@ -20,42 +23,68 @@ export interface SessionDetails {
   messages: SDKMessage[]
 }
 
+const SESSION_SUMMARY_LIMIT = Number(process.env.SESSION_LIST_LIMIT ?? 200)
+const SESSION_SUMMARY_CACHE_TTL_MS = Number(
+  process.env.SESSION_LIST_CACHE_TTL_MS ?? 2000,
+)
+
+type SessionSummaryCacheEntry = {
+  expiresAt: number
+  projectsRoot: string
+  summaries: SessionSummary[]
+}
+
+let cachedSummaries: SessionSummaryCacheEntry | null = null
+let lastIgnoredProjectIdLogAt = 0
+
 export async function collectSessionSummaries(projectId: string): Promise<SessionSummary[] | null> {
   const projectsRoot = getProjectsRoot()
   if (!projectsRoot) {
     return []
   }
 
-  const projectDir = path.join(projectsRoot, projectId)
-
-  let entries: Dirent[]
-  try {
-    entries = await readdir(projectDir, { withFileTypes: true })
-  } catch (error: unknown) {
-    if (isNotFoundError(error)) {
-      return null
+  // D1：所有会话共享同一个 cwd 桶（PROJECT_ROOT）。项目维度后续会移除，
+  // 这里暂时忽略 projectId，返回全局最近会话列表，并打印节流日志避免旧 UI 误解。
+  if (projectId) {
+    const now = Date.now()
+    if (now - lastIgnoredProjectIdLogAt > 10_000) {
+      lastIgnoredProjectIdLogAt = now
+      console.warn(
+        `[api] Ignoring projectId='${projectId}': returning global recent sessions from the fixed PROJECT_ROOT bucket.`,
+      )
     }
-
-    return []
   }
 
   const summaries: SessionSummary[] = []
 
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.jsonl')) {
-      continue
-    }
+  if (
+    cachedSummaries &&
+    cachedSummaries.projectsRoot === projectsRoot &&
+    cachedSummaries.expiresAt > Date.now()
+  ) {
+    return cachedSummaries.summaries
+  }
 
-    const filePath = path.join(projectDir, entry.name)
-    const summary = await buildSessionSummary(entry.name, filePath)
-    if (!summary) {
-      continue
-    }
+  const recentFiles = await collectRecentSessionFiles(
+    projectsRoot,
+    SESSION_SUMMARY_LIMIT,
+  )
 
-    summaries.push(summary)
+  for (const file of recentFiles) {
+    const summary = await buildSessionSummary(file.fileName, file.filePath)
+    if (summary) {
+      summaries.push(summary)
+    }
   }
 
   summaries.sort((a, b) => b.lastMessageAt - a.lastMessageAt)
+
+  cachedSummaries = {
+    expiresAt: Date.now() + SESSION_SUMMARY_CACHE_TTL_MS,
+    projectsRoot,
+    summaries,
+  }
+
   return summaries
 }
 
@@ -69,7 +98,27 @@ export async function readSessionDetails(
   }
 
   const normalizedId = normalizeSessionId(sessionId)
-  const filePath = path.join(projectsRoot, projectId, `${normalizedId}.jsonl`)
+
+  if (projectId) {
+    const now = Date.now()
+    if (now - lastIgnoredProjectIdLogAt > 10_000) {
+      lastIgnoredProjectIdLogAt = now
+      console.warn(
+        `[api] Ignoring projectId='${projectId}': locating session details by sessionId across all projects buckets.`,
+      )
+    }
+  }
+
+  let filePath: string | null = null
+  try {
+    filePath = await locateSessionFile({ projectsRoot, sessionId: normalizedId })
+  } catch {
+    filePath = null
+  }
+
+  if (!filePath) {
+    return null
+  }
 
   let fileContent: string
   try {
@@ -85,6 +134,55 @@ export async function readSessionDetails(
   const messages = parseSessionMessagesFromJsonl(fileContent)
 
   return { id: normalizedId, messages }
+}
+
+async function collectRecentSessionFiles(
+  projectsRoot: string,
+  limit: number,
+): Promise<Array<{ fileName: string; filePath: string; mtimeMs: number }>> {
+  let projectEntries: Dirent[]
+  try {
+    projectEntries = await readdir(projectsRoot, { withFileTypes: true })
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return []
+    }
+    return []
+  }
+
+  const candidates: Array<{ fileName: string; filePath: string; mtimeMs: number }> = []
+
+  for (const projectEntry of projectEntries) {
+    if (!projectEntry.isDirectory()) {
+      continue
+    }
+
+    const projectDir = path.join(projectsRoot, projectEntry.name)
+
+    let entries: Dirent[]
+    try {
+      entries = await readdir(projectDir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.jsonl')) {
+        continue
+      }
+
+      const filePath = path.join(projectDir, entry.name)
+      try {
+        const stats = await stat(filePath)
+        candidates.push({ fileName: entry.name, filePath, mtimeMs: stats.mtimeMs })
+      } catch {
+        continue
+      }
+    }
+  }
+
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs)
+  return candidates.slice(0, Math.max(0, limit))
 }
 
 function isCapabilityProbe(records: SDKMessage[]): boolean {
@@ -159,9 +257,11 @@ async function buildSessionSummary(fileName: string, filePath: string): Promise<
     extractPrompt((firstRecord as { message?: unknown }).message) ??
     ''
 
+  const normalizedPrompt = normalizeSummaryPrompt(prompt)
+
   return {
     id: normalizeSessionId(fileName),
-    prompt,
+    prompt: normalizedPrompt,
     firstMessageAt,
     lastMessageAt,
   }
@@ -232,6 +332,19 @@ function extractPrompt(source: unknown): string | null {
 
 function normalizeSessionId(value: string): string {
   return value.toLowerCase().endsWith('.jsonl') ? value.slice(0, -6) : value
+}
+
+function normalizeSummaryPrompt(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return trimmed
+  }
+
+  if (trimmed.startsWith('[consultation:preset=consultative-selling]')) {
+    return '顾问式销售咨询'
+  }
+
+  return trimmed
 }
 
 function isNotFoundError(error: unknown): boolean {

@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { Briefcase, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
@@ -6,6 +6,7 @@ import { formatRelativeTime } from './utils'
 
 type SidebarHeaderProps = {
   onNewSession?: () => void
+  onStartConsultation?: () => void
   disabled: boolean
   projectName: string | null
   latestActivity: number | null
@@ -13,6 +14,7 @@ type SidebarHeaderProps = {
 
 export function SidebarHeader({
   onNewSession,
+  onStartConsultation,
   disabled,
   projectName,
   latestActivity,
@@ -28,6 +30,15 @@ export function SidebarHeader({
         >
           <Plus className="h-4 w-4" />
           New Session
+        </Button>
+        <Button
+          variant="ghost"
+          className="mt-1 w-full justify-start gap-2"
+          onClick={onStartConsultation}
+          disabled={disabled}
+        >
+          <Briefcase className="h-4 w-4" />
+          发起咨询
         </Button>
       </div>
       <div className="px-3 pb-2 pt-3">

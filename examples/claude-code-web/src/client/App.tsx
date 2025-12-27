@@ -143,6 +143,9 @@ function App() {
   const skillFileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingSkill, setIsUploadingSkill] = useState(false)
   const [skillUploadMessage, setSkillUploadMessage] = useState<string | null>(null)
+  const [pendingConsultation, setPendingConsultation] = useState<
+    { preset: 'consultative-selling'; projectId: string } | null
+  >(null)
   const {
     capabilities,
     isLoading: isLoadingCapabilities,
@@ -152,9 +155,10 @@ function App() {
 
   const handleNewSession = useCallback(
     (projectId: string) => {
+      setPendingConsultation(null)
       selectChatSession({ sessionId: null, projectId })
     },
-    [selectChatSession],
+    [selectChatSession, setPendingConsultation],
   )
 
   useEffect(() => {
@@ -431,6 +435,28 @@ function App() {
     onMessage: handleServerMessage,
   })
 
+  const handleStartConsultation = useCallback(
+    (project: Project) => {
+      if (!isConnected) {
+        return
+      }
+
+      setPendingConsultation({ preset: 'consultative-selling', projectId: project.id })
+      selectChatSession({ sessionId: null, projectId: project.id })
+      sendMessage({
+        type: 'startConsultation',
+        preset: 'consultative-selling',
+        projectId: project.id,
+        cwd: project.path,
+      })
+      setSessionInfo((previous) => ({
+        ...previous,
+        isBusy: true,
+      }))
+    },
+    [isConnected, selectChatSession, sendMessage, setSessionInfo],
+  )
+
   const handleSkillFileSelected = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0]
@@ -583,6 +609,32 @@ function App() {
     [isConnected, sendMessage, sessionId, setAttachedFiles, setSessionInfo],
   )
 
+  const handleSendToolResult = useCallback(
+    (toolUseId: string, content: string, isError = false) => {
+      if (!isConnected) {
+        return
+      }
+
+      const payload: Record<string, unknown> = {
+        type: 'toolResult',
+        toolUseId,
+        content,
+        isError,
+      }
+
+      if (sessionId) {
+        payload.sessionId = sessionId
+      }
+
+      sendMessage(payload)
+      setSessionInfo((previous) => ({
+        ...previous,
+        isBusy: true,
+      }))
+    },
+    [isConnected, sendMessage, sessionId, setSessionInfo],
+  )
+
   return (
     <div className="flex h-svh w-full flex-col">
       <ChatHeader
@@ -618,6 +670,8 @@ function App() {
               onSessionSelect={handleSessionSelect}
               onProjectChange={handleProjectChange}
               onNewSession={handleNewSession}
+              onStartConsultation={handleStartConsultation}
+              pendingConsultation={pendingConsultation}
               onCreateProject={handleCreateNewProject}
               onDeleteProject={handleDeleteProject}
               capabilities={capabilities}
@@ -628,7 +682,11 @@ function App() {
           </ResizablePanel>
           <ResizableHandle />
           <ResizablePanel className="flex h-full flex-col">
-            <MessagesPane messages={messages} isStreaming={isStreaming} />
+            <MessagesPane
+              messages={messages}
+              isStreaming={isStreaming}
+              onSendToolResult={handleSendToolResult}
+            />
             <div className="border-t px-6 py-4">
               <PromptInput
                 messages={sessionMessages}

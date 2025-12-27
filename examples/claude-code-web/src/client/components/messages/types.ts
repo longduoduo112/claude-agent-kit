@@ -15,6 +15,9 @@ export interface ClaudeMessageContext {
   platform?: 'macos' | 'windows' | 'linux'
   assetUris?: Record<string, { light?: string; dark?: string }>
   safeFocus?: (element: HTMLElement) => void
+  toolActions?: {
+    sendToolResult: (toolUseId: string, content: string, isError?: boolean) => void
+  }
 }
 
 export interface MessageProps {

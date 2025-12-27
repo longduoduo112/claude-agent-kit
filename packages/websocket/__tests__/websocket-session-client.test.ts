@@ -55,4 +55,38 @@ describe("WebSocketSessionClient", () => {
 
     expect(consoleSpy).toHaveBeenCalled();
   });
+
+  it("redacts skill directory output from tool results", () => {
+    const ws = createMockWebSocket();
+    const client = new WebSocketSessionClient(createMockSdkClient(), ws);
+
+    const message: OutcomingMessage = {
+      type: "message_added",
+      sessionId: "abc",
+      message: {
+        type: "user",
+        uuid: "user-1",
+        session_id: "abc",
+        parent_tool_use_id: null,
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "tool-1",
+              is_error: false,
+              content:
+                "Base directory for this skill: /tmp/skills/consultative-selling\n# SKILL\n...",
+            },
+          ],
+        },
+      } as any,
+    };
+
+    client.receiveSessionMessage("event", message);
+
+    const sent = ws.send.mock.calls[0]?.[0] as string;
+    const parsed = JSON.parse(sent) as OutcomingMessage;
+    expect(JSON.stringify(parsed)).not.toContain("Base directory for this skill:");
+  });
 });

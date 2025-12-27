@@ -73,7 +73,7 @@ export type OutcomingMessage =
 
 
 interface BaseIncomingMessage {
-  type: "chat" | "setSDKOptions" | "resume" | "toolResult";
+  type: "chat" | "setSDKOptions" | "resume" | "toolResult" | "startConsultation";
   sessionId?: string | null;
 }
 
@@ -101,8 +101,19 @@ export interface ToolResultIncomingMessage extends BaseIncomingMessage {
   isError?: boolean;
 }
 
+export interface StartConsultationIncomingMessage extends BaseIncomingMessage {
+  type: "startConsultation";
+  /** 预设咨询类型（目前仅支持 consultative-selling） */
+  preset: "consultative-selling" | (string & {});
+  /** 可选：用于设置会话 CWD（通常是项目路径） */
+  cwd?: string | null;
+  /** 可选：用于前端/日志关联（当前实现不强依赖） */
+  projectId?: string | null;
+}
+
 export type IncomingMessage =
   | ChatIncomingMessage
   | SetSDKOptionsIncomingMessage
   | ResumeSessionIncomingMessage
-  | ToolResultIncomingMessage;
+  | ToolResultIncomingMessage
+  | StartConsultationIncomingMessage;

@@ -30,6 +30,8 @@ export function LeftSidebar({
   onSessionSelect,
   onProjectChange,
   onNewSession,
+  onStartConsultation,
+  pendingConsultation,
   onCreateProject,
   capabilities,
   isLoadingCapabilities,
@@ -379,6 +381,21 @@ export function LeftSidebar({
     onNewSession?.(targetProjectId)
   }, [onNewSession, selectedProjectId, projects])
 
+  const handleStartConsultationClick = useCallback(() => {
+    const targetProject =
+      (selectedProjectId
+        ? projects.find((project) => project.id === selectedProjectId) ?? null
+        : projects[0] ?? null) ?? null
+
+    if (!targetProject) {
+      return
+    }
+
+    // 先把路由切回项目级（等待后端分配 sessionId 后再自动跳转到 /sessions/:id）
+    navigateTo(buildProjectPath(targetProject.id))
+    onStartConsultation?.(targetProject)
+  }, [onStartConsultation, projects, selectedProjectId])
+
   const handleSessionClick = useCallback(
     (sessionId: string) => {
       if (!selectedProjectId) {
@@ -449,6 +466,29 @@ export function LeftSidebar({
       }
     }
 
+    const shouldInsertPlaceholder =
+      pendingConsultation?.preset === 'consultative-selling' &&
+      pendingConsultation.projectId === selectedProjectId
+
+    if (shouldInsertPlaceholder) {
+      const now = Date.now()
+      const placeholder: SessionSummary = {
+        id: selectedSessionId,
+        prompt: '顾问式销售咨询',
+        firstMessageAt: now,
+        lastMessageAt: now,
+      }
+
+      const nextSessions = [
+        placeholder,
+        ...(sessions ?? []).filter((session) => session.id !== selectedSessionId),
+      ]
+
+      applySessionsUpdate(selectedProjectId, nextSessions)
+      refreshAttemptsRef.current = 0
+      return
+    }
+
     if (selectedSessionId !== lastMissingSessionIdRef.current) {
       refreshAttemptsRef.current = 0
       lastMissingSessionIdRef.current = selectedSessionId
@@ -469,7 +509,9 @@ export function LeftSidebar({
   }, [
     selectedProjectId,
     selectedSessionId,
+    pendingConsultation,
     projectSessions,
+    applySessionsUpdate,
     refreshSessionsForProject,
   ])
 
@@ -479,6 +521,7 @@ export function LeftSidebar({
     <div className="flex h-full min-h-0 flex-col border-r bg-sidebar">
       <SidebarHeader
         onNewSession={handleNewSessionClick}
+        onStartConsultation={handleStartConsultationClick}
         disabled={false}
         projectName={currentProject ? currentProject.name : null}
         latestActivity={currentProject ? currentProject.latestActivity : null}
